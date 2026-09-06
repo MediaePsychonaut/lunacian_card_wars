@@ -1,0 +1,19 @@
+# Flutter & Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Entorno y Secretos (Regla estricta Sky Mavis)
+.env
+*.env
+*.key
+*.pem
+
+# Archivos de Sistema y Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
