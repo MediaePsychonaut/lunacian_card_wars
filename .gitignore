@@ -8,6 +8,7 @@ build/
 # Entorno y Secretos (Regla estricta Sky Mavis)
 .env
 *.env
+secrets.env
 *.key
 *.pem
 

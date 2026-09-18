@@ -1,0 +1,56 @@
+[
+  {
+    "id": "1",
+    "name": "Buba",
+    "class": "Plant",
+    "level": 25,
+    "genes": "0x000000000000000000000000000000000000000000000000000000000000000000",
+    "axpInfo": { "level": 25 },
+    "image": "",
+    "parts": [
+      { "id": "horn-caterpillars", "name": "Caterpillars", "class": "Bug", "type": "Horn" },
+      { "id": "back-leafy", "name": "Leafy", "class": "Plant", "type": "Back" },
+      { "id": "mouth-tiny-turtle", "name": "Tiny Turtle", "class": "Reptile", "type": "Mouth" },
+      { "id": "tail-shrimp", "name": "Shrimp", "class": "Aquatic", "type": "Tail" },
+      { "id": "eyes-confused", "name": "Confused", "class": "Plant", "type": "Eyes" },
+      { "id": "ears-lotus", "name": "Lotus", "class": "Plant", "type": "Ears" }
+    ],
+    "stats": { "hp": 61, "speed": 35, "skill": 31, "morale": 43 }
+  },
+  {
+    "id": "2",
+    "name": "Olek",
+    "class": "Beast",
+    "level": 25,
+    "genes": "0x000000000000000000000000000000000000000000000000000000000000000001",
+    "axpInfo": { "level": 25 },
+    "image": "",
+    "parts": [
+      { "id": "horn-serious", "name": "Serious", "class": "Beast", "type": "Horn" },
+      { "id": "back-jaguar", "name": "Jaguar", "class": "Beast", "type": "Back" },
+      { "id": "mouth-goda", "name": "Goda", "class": "Beast", "type": "Mouth" },
+      { "id": "tail-rice", "name": "Rice", "class": "Beast", "type": "Tail" },
+      { "id": "eyes-chubby", "name": "Chubby", "class": "Beast", "type": "Eyes" },
+      { "id": "ears-sakura", "name": "Sakura", "class": "Beast", "type": "Ears" }
+    ],
+    "stats": { "hp": 43, "speed": 61, "skill": 43, "morale": 83 }
+  },
+  {
+    "id": "3",
+    "name": "Puffy",
+    "class": "Aquatic",
+    "level": 25,
+    "genes": "0x000000000000000000000000000000000000000000000000000000000000000002",
+    "axpInfo": { "level": 25 },
+    "image": "",
+    "parts": [
+      { "id": "horn-anemone", "name": "Anemone", "class": "Aquatic", "type": "Horn" },
+      { "id": "back-blue-moon", "name": "Blue Moon", "class": "Aquatic", "type": "Back" },
+      { "id": "mouth-piranha", "name": "Piranha", "class": "Aquatic", "type": "Mouth" },
+      { "id": "tail-nimo", "name": "Nimo", "class": "Aquatic", "type": "Tail" },
+      { "id": "eyes-spit-kiss", "name": "Spit Kiss", "class": "Aquatic", "type": "Eyes" },
+      { "id": "ears-seaside-porcinus", "name": "Seaside Porcinus", "class": "Aquatic", "type": "Ears" }
+    ],
+    "stats": { "hp": 43, "speed": 67, "skill": 61, "morale": 29 }
+  }
+]
