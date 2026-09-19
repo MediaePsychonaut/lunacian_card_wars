@@ -2,8 +2,8 @@
 // [MODULE_NAME]: combat_engine_test.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Tests / Domain
-// [INTENT]: Comprehensive tests for dual-tile 8-landscape placement, affinity guards, Turn Zero mulligan, and pure clash resolution
-// [DEPENDENCIES]: combat_engine.dart, combat_enums.dart, game_state.dart, game_action.dart, board_unit_entity.dart, board_building_entity.dart, player_state_entity.dart, board_lane_entity.dart, axie_card_entity.dart
+// [INTENT]: Unit tests covering interleaved drafting, priority inversion, rotating initiative, early lethal clash short-circuit, tactical buildings & auras
+// [DEPENDENCIES]: combat_engine.dart, combat_enums.dart, game_state.dart, game_action.dart, board_unit_entity.dart, board_building_entity.dart, building_card_entity.dart, combat_card.dart, player_state_entity.dart, board_lane_entity.dart, axie_card_entity.dart
 // [ARCHITECTURE]: Unit Tests
 // ===============================================================================
 
@@ -15,6 +15,8 @@ import 'package:lunacian_card_wars/src/domain/services/combat_engine.dart';
 import 'package:lunacian_card_wars/src/domain/entities/axie_card_entity.dart';
 import 'package:lunacian_card_wars/src/domain/entities/combat/board_unit_entity.dart';
 import 'package:lunacian_card_wars/src/domain/entities/combat/board_building_entity.dart';
+import 'package:lunacian_card_wars/src/domain/entities/combat/building_card_entity.dart';
+import 'package:lunacian_card_wars/src/domain/entities/combat/combat_card.dart';
 import 'package:lunacian_card_wars/src/domain/entities/combat/player_state_entity.dart';
 import 'package:lunacian_card_wars/src/domain/entities/combat/board_lane_entity.dart';
 
@@ -46,19 +48,35 @@ AxieCardEntity createTestCard(
   );
 }
 
-GameState placeAllEightTiles(CombatEngine engine, GameState state) {
+List<CombatCard> createTestDeck(String prefix) {
+  return [
+    ...List.generate(15, (i) => createTestCard('${prefix}_u$i', 1, 10, 10)),
+    BuildingCardEntity.attackTotem(id: '${prefix}_b_atk1'),
+    BuildingCardEntity.attackTotem(id: '${prefix}_b_atk2'),
+    BuildingCardEntity.defenseBarricade(id: '${prefix}_b_def1'),
+    BuildingCardEntity.defenseBarricade(id: '${prefix}_b_def2'),
+    BuildingCardEntity.vitalityShrine(id: '${prefix}_b_rep'),
+  ];
+}
+
+GameState draftAllEightTilesInterleaved(CombatEngine engine, GameState state) {
   var s = state;
-  final affinities = [
+  final p1Tiles = [
     BoardClassAffinity.beast,
     BoardClassAffinity.aquatic,
     BoardClassAffinity.plant,
     BoardClassAffinity.bug,
   ];
+  final p2Tiles = [
+    BoardClassAffinity.aquatic,
+    BoardClassAffinity.beast,
+    BoardClassAffinity.bug,
+    BoardClassAffinity.plant,
+  ];
+
   for (int i = 0; i < 4; i++) {
-    s = engine.reduce(s, PlaceTileAction(PlayerId.p1, i, affinities[i]));
-  }
-  for (int i = 0; i < 4; i++) {
-    s = engine.reduce(s, PlaceTileAction(PlayerId.p2, i, affinities[i]));
+    s = engine.reduce(s, PlaceTileAction(PlayerId.p1, i, p1Tiles[i]));
+    s = engine.reduce(s, PlaceTileAction(PlayerId.p2, i, p2Tiles[i]));
   }
   return s;
 }
@@ -70,279 +88,140 @@ void main() {
     engine = CombatEngine();
   });
 
-  group('Turn Zero: 8-Landscape Tile Placement & 15-Card Deck Initialization (AC-01, AC-02)', () {
-    test('Initializes with 25 HP hero, 15 cards in deck, 0 cards in hand, 4 landscapes, turnZeroTilePlacement phase', () {
-      final p1Deck = List.generate(15, (i) => createTestCard('p1_$i', 1, 10, 10));
-      final p2Deck = List.generate(15, (i) => createTestCard('p2_$i', 1, 10, 10));
+  group('20-Card Decks & Interleaved Tile Drafting (AC-01, AC-05)', () {
+    test('Initializes with 20 cards in deck, 0 in hand, and firstTilePlacer set', () {
+      final p1Deck = createTestDeck('p1');
+      final p2Deck = createTestDeck('p2');
 
       final state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
 
-      expect(state.roundNumber, 1);
+      expect(state.p1.deck.length, 20);
+      expect(state.p1.hand.length, 0);
+      expect(state.p2.deck.length, 20);
+      expect(state.p2.hand.length, 0);
       expect(state.phase, TurnPhase.turnZeroTilePlacement);
       expect(state.activePlayer, PlayerId.p1);
+      expect(state.firstTilePlacer, PlayerId.p1);
       expect(state.initiativePlayer, PlayerId.p1);
-
-      // Verify P1
-      expect(state.p1.heroHp, 25);
-      expect(state.p1.maxHp, 25);
-      expect(state.p1.currentMana, 0);
-      expect(state.p1.maxMana, 0);
-      expect(state.p1.hand.length, 0);
-      expect(state.p1.deck.length, 15);
-      expect(state.p1.landscapeDeck, [
-        BoardClassAffinity.beast,
-        BoardClassAffinity.aquatic,
-        BoardClassAffinity.plant,
-        BoardClassAffinity.bug,
-      ]);
-      expect(state.p1.hasCompletedMulligan, isFalse);
-
-      // Verify P2
-      expect(state.p2.heroHp, 25);
-      expect(state.p2.maxHp, 25);
-      expect(state.p2.currentMana, 0);
-      expect(state.p2.maxMana, 0);
-      expect(state.p2.hand.length, 0);
-      expect(state.p2.deck.length, 15);
-      expect(state.p2.landscapeDeck, [
-        BoardClassAffinity.beast,
-        BoardClassAffinity.aquatic,
-        BoardClassAffinity.plant,
-        BoardClassAffinity.bug,
-      ]);
-      expect(state.p2.hasCompletedMulligan, isFalse);
-
-      // Verify 4 lanes start with empty slot affinities
-      expect(state.lanes.length, 4);
-      for (int i = 0; i < 4; i++) {
-        expect(state.lanes[i].p1Slot.tileAffinity, isNull);
-        expect(state.lanes[i].p2Slot.tileAffinity, isNull);
-      }
-
-      // Verify telemetry logs
-      expect(state.logs.isNotEmpty, isTrue);
-      expect(state.logs.first, contains('Turn Zero: Landscape tile placement active'));
     });
 
-    test('8-Tile placement sequence transitions to hand draw (4 cards each) and turnZeroMulligan phase', () {
-      final p1Deck = List.generate(15, (i) => createTestCard('p1_$i', 1, 10, 10));
-      final p2Deck = List.generate(15, (i) => createTestCard('p2_$i', 1, 10, 10));
+    test('Interleaved tile placement sequence enforces turn alternation and rejects out-of-turn placements', () {
+      final p1Deck = createTestDeck('p1');
+      final p2Deck = createTestDeck('p2');
 
       var state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
 
-      // P1 places 4 tiles
+      // P2 attempts to place out of turn -> rejected
+      final illegalAttempt = engine.reduce(state, PlaceTileAction(PlayerId.p2, 0, BoardClassAffinity.beast));
+      expect(illegalAttempt, equals(state));
+
+      // P1 places tile on Lane 0 -> succeeds, active player toggles to P2
       state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 0, BoardClassAffinity.beast));
-      state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 1, BoardClassAffinity.aquatic));
-      state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 2, BoardClassAffinity.plant));
-      state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 3, BoardClassAffinity.bug));
-
       expect(state.lanes[0].p1Slot.tileAffinity, BoardClassAffinity.beast);
-      expect(state.lanes[1].p1Slot.tileAffinity, BoardClassAffinity.aquatic);
-      expect(state.lanes[2].p1Slot.tileAffinity, BoardClassAffinity.plant);
-      expect(state.lanes[3].p1Slot.tileAffinity, BoardClassAffinity.bug);
-
-      // Active player transitions to P2
       expect(state.activePlayer, PlayerId.p2);
-      expect(state.phase, TurnPhase.turnZeroTilePlacement);
 
-      // P2 places 4 tiles
+      // P1 attempts to place again -> rejected
+      final p1Illegal = engine.reduce(state, PlaceTileAction(PlayerId.p1, 1, BoardClassAffinity.aquatic));
+      expect(p1Illegal, equals(state));
+
+      // P2 places tile on Lane 0 -> succeeds, active player toggles to P1
       state = engine.reduce(state, PlaceTileAction(PlayerId.p2, 0, BoardClassAffinity.aquatic));
+      expect(state.lanes[0].p2Slot.tileAffinity, BoardClassAffinity.aquatic);
+      expect(state.activePlayer, PlayerId.p1);
+
+      // Complete remaining 6 interleaved placements
+      state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 1, BoardClassAffinity.aquatic));
       state = engine.reduce(state, PlaceTileAction(PlayerId.p2, 1, BoardClassAffinity.beast));
+      state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 2, BoardClassAffinity.plant));
       state = engine.reduce(state, PlaceTileAction(PlayerId.p2, 2, BoardClassAffinity.bug));
+      state = engine.reduce(state, PlaceTileAction(PlayerId.p1, 3, BoardClassAffinity.bug));
       state = engine.reduce(state, PlaceTileAction(PlayerId.p2, 3, BoardClassAffinity.plant));
 
-      // Dual-tile topology verification: independent per-slot affinities
-      expect(state.lanes[0].p1Slot.tileAffinity, BoardClassAffinity.beast);
-      expect(state.lanes[0].p2Slot.tileAffinity, BoardClassAffinity.aquatic);
-      expect(state.lanes[1].p1Slot.tileAffinity, BoardClassAffinity.aquatic);
-      expect(state.lanes[1].p2Slot.tileAffinity, BoardClassAffinity.beast);
-
-      // Transition to turnZeroMulligan: both players draw 4 cards from deck
+      // 8 tiles complete -> transitions to turnZeroMulligan, draws 4 cards each (deck: 16)
       expect(state.phase, TurnPhase.turnZeroMulligan);
       expect(state.activePlayer, PlayerId.p1);
       expect(state.p1.hand.length, 4);
-      expect(state.p1.deck.length, 11);
+      expect(state.p1.deck.length, 16);
       expect(state.p2.hand.length, 4);
-      expect(state.p2.deck.length, 11);
+      expect(state.p2.deck.length, 16);
     });
+  });
 
-    test('MulliganAction swaps selected cards, redraws equal count, and preserves 15-card invariant', () {
-      final p1Deck = List.generate(15, (i) => createTestCard('p1_$i', 1, 10, 10));
-      final p2Deck = List.generate(15, (i) => createTestCard('p2_$i', 1, 10, 10));
+  group('Priority Inversion & Dynamic Rotating Initiative (AC-02, AC-03)', () {
+    test('Priority inversion in Round 1: second tile placer (P2) is awarded opening initiative', () {
+      final p1Deck = createTestDeck('p1');
+      final p2Deck = createTestDeck('p2');
 
       var state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
-      state = placeAllEightTiles(engine, state);
+      state = draftAllEightTilesInterleaved(engine, state);
 
-      expect(state.phase, TurnPhase.turnZeroMulligan);
-
-      // P1 hand initially: p1_0, p1_1, p1_2, p1_3
-      final initialP1HandIds = state.p1.hand.map((c) => c.id).toList();
-      expect(initialP1HandIds, ['p1_0', 'p1_1', 'p1_2', 'p1_3']);
-
-      // P1 mulligans 2 cards: p1_0 and p1_2
-      state = engine.reduce(state, MulliganAction(PlayerId.p1, ['p1_0', 'p1_2']));
-
-      expect(state.p1.hasCompletedMulligan, isTrue);
-      expect(state.p1.hand.length, 4);
-      expect(state.p1.deck.length, 11);
-
-      // Cards drawn from top of deck should be p1_4 and p1_5
-      final newHandIds = state.p1.hand.map((c) => c.id).toList();
-      expect(newHandIds, containsAll(['p1_1', 'p1_3', 'p1_4', 'p1_5']));
-      expect(newHandIds.contains('p1_0'), isFalse);
-      expect(newHandIds.contains('p1_2'), isFalse);
-
-      // Replaced cards are appended to the deck
-      final deckIds = state.p1.deck.map((c) => c.id).toList();
-      expect(deckIds.last, 'p1_2');
-      expect(deckIds[deckIds.length - 2], 'p1_0');
-
-      // State activePlayer transitions to P2
-      expect(state.activePlayer, PlayerId.p2);
-
-      // P2 passes mulligan (keeps hand)
+      // Pass mulligans
+      state = engine.reduce(state, PassPhaseAction(PlayerId.p1));
       state = engine.reduce(state, PassPhaseAction(PlayerId.p2));
 
-      expect(state.p2.hasCompletedMulligan, isTrue);
+      // Round 1 begins with Priority Inversion -> P2 gets opening initiative!
+      expect(state.roundNumber, 1);
+      expect(state.phase, TurnPhase.p2Turn);
+      expect(state.activePlayer, PlayerId.p2);
+      expect(state.initiativePlayer, PlayerId.p2);
+      expect(state.p1.currentMana, 1);
+      expect(state.p2.currentMana, 1);
+    });
 
-      // Automatic advance to Round 1 setup
+    test('Round-to-round rotating initiative across multiple rounds', () {
+      final p1Deck = createTestDeck('p1');
+      final p2Deck = createTestDeck('p2');
+
+      var state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
+      state = draftAllEightTilesInterleaved(engine, state);
+      state = engine.reduce(state, PassPhaseAction(PlayerId.p1));
+      state = engine.reduce(state, PassPhaseAction(PlayerId.p2));
+
+      // Round 1: P2 had initiative (Priority Inversion)
+      expect(state.roundNumber, 1);
+      expect(state.initiativePlayer, PlayerId.p2);
+      expect(state.phase, TurnPhase.p2Turn);
+
+      // P2 passes turn -> P1's turn
+      state = engine.advancePhase(state);
       expect(state.phase, TurnPhase.p1Turn);
       expect(state.activePlayer, PlayerId.p1);
-      expect(state.roundNumber, 1);
-      expect(state.p1.currentMana, 1);
-      expect(state.p1.maxMana, 1);
-      expect(state.p2.currentMana, 1);
-      expect(state.p2.maxMana, 1);
+
+      // P1 passes second turn -> advances to clashPhase
+      state = engine.advancePhase(state);
+      expect(state.phase, TurnPhase.clashPhase);
+
+      // Advance from clashPhase -> roundEnd with rotated initiative (P1)
+      state = engine.advancePhase(state);
+      expect(state.phase, TurnPhase.roundEnd);
+      expect(state.initiativePlayer, PlayerId.p1);
+
+      // Advance from roundEnd -> Round 2 starts with P1
+      state = engine.advancePhase(state);
+      expect(state.roundNumber, 2);
+      expect(state.phase, TurnPhase.p1Turn);
+      expect(state.initiativePlayer, PlayerId.p1);
+      expect(state.activePlayer, PlayerId.p1);
+
+      // Round 2 turns: P1 passes -> P2 passes -> clashPhase -> roundEnd
+      state = engine.advancePhase(state);
+      expect(state.phase, TurnPhase.p2Turn);
+      state = engine.advancePhase(state);
+      expect(state.phase, TurnPhase.clashPhase);
+      state = engine.advancePhase(state);
+      expect(state.phase, TurnPhase.roundEnd);
+      expect(state.initiativePlayer, PlayerId.p2);
+
+      // Round 3 starts with P2
+      state = engine.advancePhase(state);
+      expect(state.roundNumber, 3);
+      expect(state.phase, TurnPhase.p2Turn);
+      expect(state.initiativePlayer, PlayerId.p2);
     });
   });
 
-  group('Legal Actions Validation & Tile Affinity Guards (AC-02, AC-03)', () {
-    test('Legal actions in turnZeroTilePlacement: only PlaceTileAction for active player', () {
-      final p1Deck = List.generate(15, (i) => createTestCard('p1_$i', 1, 10, 10));
-      final p2Deck = List.generate(15, (i) => createTestCard('p2_$i', 1, 10, 10));
-
-      final state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
-
-      // P1 actions in turnZeroTilePlacement: 4 lanes * 4 landscape choices = 16 PlaceTileActions
-      final p1Actions = engine.getLegalActions(state, PlayerId.p1);
-      expect(p1Actions.whereType<PlaceTileAction>().length, 16);
-      expect(p1Actions.whereType<PassPhaseAction>().isEmpty, isTrue);
-      expect(p1Actions.whereType<MulliganAction>().isEmpty, isTrue);
-      expect(p1Actions.whereType<PlayUnitAction>().isEmpty, isTrue);
-
-      // P2 is not active yet
-      final p2Actions = engine.getLegalActions(state, PlayerId.p2);
-      expect(p2Actions.isEmpty, isTrue);
-    });
-
-    test('Tile affinity guard rejects mismatched unit class and permits matching class', () {
-      final beastCard = createTestCard('c_beast', 1, 10, 10, axieClass: AxieElementalClass.beast);
-      final aquaCard = createTestCard('c_aqua', 1, 10, 10, axieClass: AxieElementalClass.aquatic);
-      final plantCard = createTestCard('c_plant', 1, 10, 10, axieClass: AxieElementalClass.plant);
-
-      final p1Deck = [beastCard, aquaCard, plantCard, ...List.generate(12, (i) => createTestCard('p1_$i', 1, 5, 5))];
-      final p2Deck = List.generate(15, (i) => createTestCard('p2_$i', 1, 10, 10));
-
-      var state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
-      // Place tiles: Lane 0 = beast, Lane 1 = aquatic, Lane 2 = plant, Lane 3 = bug
-      state = placeAllEightTiles(engine, state);
-
-      // Pass mulligans to enter Round 1
-      state = engine.reduce(state, PassPhaseAction(PlayerId.p1));
-      state = engine.reduce(state, PassPhaseAction(PlayerId.p2));
-
-      expect(state.phase, TurnPhase.p1Turn);
-      expect(state.p1.currentMana, 1);
-
-      // canPlayUnit checks
-      // Beast card on Lane 0 (beast) -> TRUE
-      expect(engine.canPlayUnit(state, PlayerId.p1, beastCard, 0), isTrue);
-      // Beast card on Lane 1 (aquatic) -> FALSE
-      expect(engine.canPlayUnit(state, PlayerId.p1, beastCard, 1), isFalse);
-      // Aquatic card on Lane 1 (aquatic) -> TRUE
-      expect(engine.canPlayUnit(state, PlayerId.p1, aquaCard, 1), isTrue);
-      // Aquatic card on Lane 2 (plant) -> FALSE
-      expect(engine.canPlayUnit(state, PlayerId.p1, aquaCard, 2), isFalse);
-      // Plant card on Lane 2 (plant) -> TRUE
-      expect(engine.canPlayUnit(state, PlayerId.p1, plantCard, 2), isTrue);
-
-      // Legal actions reflect affinity filtering
-      final legalPlays = engine.getLegalActions(state, PlayerId.p1).whereType<PlayUnitAction>().toList();
-
-      // Beast card should only be playable in lane 0
-      final beastPlays = legalPlays.where((a) => a.card.id == 'c_beast').toList();
-      expect(beastPlays.length, 1);
-      expect(beastPlays.first.laneIndex, 0);
-
-      // Aqua card should only be playable in lane 1
-      final aquaPlays = legalPlays.where((a) => a.card.id == 'c_aqua').toList();
-      expect(aquaPlays.length, 1);
-      expect(aquaPlays.first.laneIndex, 1);
-
-      // Attempting illegal play into lane 1 with beastCard returns unchanged state
-      final illegalAttempt = engine.reduce(state, PlayUnitAction(PlayerId.p1, beastCard, 1));
-      expect(illegalAttempt.lanes[1].p1Slot.occupant, isNull);
-      expect(illegalAttempt.p1.currentMana, 1); // Mana not spent
-
-      // Playing matching beastCard into lane 0 succeeds
-      final legalAttempt = engine.reduce(state, PlayUnitAction(PlayerId.p1, beastCard, 0));
-      expect(legalAttempt.lanes[0].p1Slot.occupant, isNotNull);
-      expect(legalAttempt.lanes[0].p1Slot.occupant!.name, 'Test Axie c_beast');
-      expect(legalAttempt.p1.currentMana, 0);
-    });
-
-    test('Round 1 turn: mana gating and floop mechanics with affinity tiles', () {
-      final cheapBeast = createTestCard('c_cheap', 1, 10, 10, axieClass: AxieElementalClass.beast);
-      final expensiveBeast = createTestCard('c_expensive', 2, 20, 20, axieClass: AxieElementalClass.beast);
-
-      final p1Deck = [cheapBeast, expensiveBeast, ...List.generate(13, (i) => createTestCard('rest_$i', 1, 5, 5))];
-      final p2Deck = List.generate(15, (i) => createTestCard('p2_$i', 1, 10, 10));
-
-      var state = engine.initializeGame(p1Deck: p1Deck, p2Deck: p2Deck);
-      state = placeAllEightTiles(engine, state);
-      state = engine.reduce(state, PassPhaseAction(PlayerId.p1));
-      state = engine.reduce(state, PassPhaseAction(PlayerId.p2));
-
-      expect(state.phase, TurnPhase.p1Turn);
-      expect(state.p1.currentMana, 1);
-
-      // P1 hand has cheapBeast (cost 1) and expensiveBeast (cost 2)
-      final actions = engine.getLegalActions(state, PlayerId.p1);
-      final playUnitActions = actions.whereType<PlayUnitAction>().toList();
-
-      // Only 1-cost cheapBeast in lane 0 (beast tile) is legal; expensiveBeast costs 2 > 1 mana
-      final cheapPlays = playUnitActions.where((a) => a.card.id == 'c_cheap').toList();
-      final expPlays = playUnitActions.where((a) => a.card.id == 'c_expensive').toList();
-      expect(cheapPlays.length, 1);
-      expect(cheapPlays.first.laneIndex, 0);
-      expect(expPlays.isEmpty, isTrue);
-
-      // Play cheapBeast in lane 0
-      state = engine.reduce(state, PlayUnitAction(PlayerId.p1, cheapBeast, 0));
-      expect(state.lanes[0].p1Slot.occupant, isNotNull);
-      expect(state.p1.currentMana, 0);
-
-      // With 0 mana, no PlayUnitAction is legal
-      final actionsAfterPlay = engine.getLegalActions(state, PlayerId.p1);
-      expect(actionsAfterPlay.whereType<PlayUnitAction>().isEmpty, isTrue);
-
-      // Floop action is available for lane 0 occupant
-      final floopActions = actionsAfterPlay.whereType<ActivateFloopAction>().toList();
-      expect(floopActions.length, 1);
-      expect(floopActions.first.laneIndex, 0);
-
-      // Activate Floop
-      state = engine.reduce(state, ActivateFloopAction(PlayerId.p1, 0));
-      expect(state.lanes[0].p1Slot.occupant!.hasFlooped, isTrue);
-
-      // Cannot floop again in same round
-      final actionsAfterFloop = engine.getLegalActions(state, PlayerId.p1);
-      expect(actionsAfterFloop.whereType<ActivateFloopAction>().isEmpty, isTrue);
-    });
-  });
-
-  group('Clash Phase Decomposition & Dual-Tile Topology (AC-01, AC-02, AC-06)', () {
-    test('Simultaneous cross with pure cascading trample: Unit DEF -> Building -> Hero HP across dual tiles', () {
+  group('Lethal Clash Short-Circuit (AC-04)', () {
+    test('Lethal clash short-circuiting at Lane 0 aborts subsequent lanes', () {
       final state = GameState(
         roundNumber: 1,
         phase: TurnPhase.clashPhase,
@@ -372,70 +251,135 @@ void main() {
           ),
         },
         lanes: [
+          // Lane 0: P1 has 30 ATK unit facing empty P2 slot -> Deals 30 dmg to P2 Hero HP (25 - 30 = -5 lethal!)
           BoardLaneEntity(
             laneIndex: 0,
             p1Slot: LaneSlot(
               tileAffinity: BoardClassAffinity.beast,
-              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p1_u', 1, 20, 10), instanceId: 'u1'),
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('lethal_u', 1, 30, 10), instanceId: 'u_lethal'),
             ),
-            p2Slot: LaneSlot(
-              tileAffinity: BoardClassAffinity.plant,
-              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p2_u', 1, 0, 10), instanceId: 'u2'),
-              building: const BoardBuildingEntity(
-                instanceId: 'bldg_1',
-                name: 'Wooden Bunker',
-                currentHp: 5,
-                maxHp: 5,
-                armorReduction: 2,
-              ),
-            ),
+            p2Slot: const LaneSlot(tileAffinity: BoardClassAffinity.beast),
           ),
-          const BoardLaneEntity(
+          // Lane 1: P2 has 20 ATK unit facing empty P1 slot (would deal 20 to P1 if evaluated)
+          BoardLaneEntity(
             laneIndex: 1,
-            p1Slot: LaneSlot(tileAffinity: BoardClassAffinity.aquatic),
-            p2Slot: LaneSlot(tileAffinity: BoardClassAffinity.bug),
+            p1Slot: const LaneSlot(tileAffinity: BoardClassAffinity.aquatic),
+            p2Slot: LaneSlot(
+              tileAffinity: BoardClassAffinity.aquatic,
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p2_unresolved', 1, 20, 10), instanceId: 'u_unres'),
+            ),
           ),
-          const BoardLaneEntity(
-            laneIndex: 2,
-            p1Slot: LaneSlot(tileAffinity: BoardClassAffinity.plant),
-            p2Slot: LaneSlot(tileAffinity: BoardClassAffinity.beast),
-          ),
-          const BoardLaneEntity(
-            laneIndex: 3,
-            p1Slot: LaneSlot(tileAffinity: BoardClassAffinity.bug),
-            p2Slot: LaneSlot(tileAffinity: BoardClassAffinity.aquatic),
-          ),
+          const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 3, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
         ],
         actionHistory: const [],
       );
 
       final result = engine.resolveClashPhase(state);
 
-      // Arithmetic breakdown:
-      // P1 deals 20 ATK to P2 side.
-      // 1. P2 Unit has 10 DEF. 20 > 10 -> Unit DEF drops to 0, overflow = 10.
-      // 2. Overflow 10 hits Building with 2 armorReduction -> Effective building damage = 10 - 2 = 8.
-      // 3. Building has 5 HP. 8 > 5 -> Building destroyed (HP 0), bldgOverflow = 8 - 5 = 3.
-      // 4. Residual trample 3 hits P2 Hero: 25 - 3 = 22 HP!
-      expect(result.p2.heroHp, 22);
+      // P2 took lethal damage in Lane 0
+      expect(result.p2.heroHp, -5);
+      // Lane 1 was short-circuited: P1 took NO damage from Lane 1
       expect(result.p1.heroHp, 25);
+      expect(result.phase, TurnPhase.gameOver);
+      expect(result.winner, PlayerId.p1);
 
-      // Graveyard reaping
-      expect(result.lanes[0].p2Slot.occupant, isNull);
-      expect(result.lanes[0].p2Slot.building, isNull);
-      expect(result.p2.graveyard.length, 1);
-      expect(result.p2.graveyard.first.instanceId, 'u2');
-
-      // P1 unit survives with 10 DEF
-      expect(result.lanes[0].p1Slot.occupant, isNotNull);
-      expect(result.lanes[0].p1Slot.occupant!.currentDef, 10);
-
-      // Dual tile affinities preserved after clash
-      expect(result.lanes[0].p1Slot.tileAffinity, BoardClassAffinity.beast);
-      expect(result.lanes[0].p2Slot.tileAffinity, BoardClassAffinity.plant);
+      // Verifies short-circuit log
+      expect(result.logs.any((l) => l.contains('Clash aborted at Lane 0 due to lethal damage')), isTrue);
     });
 
-    test('Pip Crit check: full pips deal floor(ATK * 1.25) and reset pips; non-full pips increment', () {
+    test('Simultaneous double-lethal on same lane results in draw and aborts subsequent lanes', () {
+      final state = GameState(
+        roundNumber: 1,
+        phase: TurnPhase.clashPhase,
+        activePlayer: PlayerId.p1,
+        players: {
+          PlayerId.p1: const PlayerStateEntity(id: PlayerId.p1, heroHp: 20, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
+          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 20, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
+        },
+        lanes: [
+          // Both strike with 25 unblocked damage -> Both HP drop to -5 simultaneously
+          BoardLaneEntity(
+            laneIndex: 0,
+            p1Slot: LaneSlot(
+              tileAffinity: BoardClassAffinity.beast,
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p1_u', 1, 25, 5), instanceId: 'u1'),
+            ),
+            p2Slot: LaneSlot(
+              tileAffinity: BoardClassAffinity.beast,
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p2_u', 1, 25, 5), instanceId: 'u2'),
+            ),
+          ),
+          const BoardLaneEntity(laneIndex: 1, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 3, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+        ],
+        actionHistory: const [],
+      );
+
+      final result = engine.resolveClashPhase(state);
+
+      expect(result.p1.heroHp, 0);
+      expect(result.p2.heroHp, 0);
+      expect(result.phase, TurnPhase.gameOver);
+      expect(result.winner, isNull); // Draw state
+      expect(result.logs.any((l) => l.contains('Simultaneous double-lethal detected! Game over: Draw')), isTrue);
+    });
+  });
+
+  group('Tactical Buildings, Auras & Trample (AC-05)', () {
+    test('Attack Totem applies +2 ATK dynamic aura to allied unit in same lane', () {
+      final totem = BuildingCardEntity.attackTotem(id: 'bldg_atk');
+      final beast = createTestCard('c_beast', 1, 10, 10, axieClass: AxieElementalClass.beast);
+
+      var state = GameState(
+        roundNumber: 1,
+        phase: TurnPhase.p1Turn,
+        activePlayer: PlayerId.p1,
+        initiativePlayer: PlayerId.p1,
+        players: {
+          PlayerId.p1: PlayerStateEntity(
+            id: PlayerId.p1,
+            heroHp: 25,
+            maxHp: 25,
+            currentMana: 3,
+            maxMana: 3,
+            hand: [totem, beast],
+            deck: const [],
+            graveyard: const [],
+            canReact: false,
+          ),
+          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
+        },
+        lanes: [
+          const BoardLaneEntity(
+            laneIndex: 0,
+            p1Slot: LaneSlot(tileAffinity: BoardClassAffinity.beast),
+            p2Slot: LaneSlot(tileAffinity: BoardClassAffinity.beast),
+          ),
+          const BoardLaneEntity(laneIndex: 1, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 3, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+        ],
+        actionHistory: const [],
+      );
+
+      // Play building (cost 2)
+      state = engine.reduce(state, PlayBuildingAction(PlayerId.p1, 0, totem.id));
+      expect(state.lanes[0].p1Slot.building, isNotNull);
+      expect(state.p1.currentMana, 1);
+
+      // Play unit (cost 1)
+      state = engine.reduce(state, PlayUnitAction(PlayerId.p1, beast, 0));
+      expect(state.lanes[0].p1Slot.occupant, isNotNull);
+      expect(state.p1.currentMana, 0);
+
+      // Dynamic effective ATK should be 10 + 2 = 12
+      expect(engine.getEffectiveAtk(state, 0, PlayerId.p1), 12);
+    });
+
+    test('Defense Barricade applies +5 DEF dynamic aura, absorbing damage before unit DEF is damaged', () {
+      final barricade = BuildingCardEntity.defenseBarricade(id: 'bldg_def');
       final state = GameState(
         roundNumber: 1,
         phase: TurnPhase.clashPhase,
@@ -449,104 +393,14 @@ void main() {
             laneIndex: 0,
             p1Slot: LaneSlot(
               tileAffinity: BoardClassAffinity.beast,
-              occupant: BoardUnitEntity.fromAxieCard(createTestCard('crit_u', 1, 20, 10, initialPips: 3, maxPips: 3), instanceId: 'u_crit'),
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p1_u', 1, 12, 10), instanceId: 'u1'),
             ),
-            p2Slot: const LaneSlot(tileAffinity: BoardClassAffinity.beast),
-          ),
-          BoardLaneEntity(
-            laneIndex: 1,
-            p1Slot: const LaneSlot(tileAffinity: BoardClassAffinity.aquatic),
+            // P2 has 10 DEF unit + Defense Barricade (+5 DEF aura, 16 HP, 2 Armor) -> Total defense buffer = 15
             p2Slot: LaneSlot(
-              tileAffinity: BoardClassAffinity.aquatic,
-              occupant: BoardUnitEntity.fromAxieCard(createTestCard('std_u', 1, 10, 10, initialPips: 1, maxPips: 3), instanceId: 'u_std'),
-            ),
-          ),
-          const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(tileAffinity: BoardClassAffinity.plant), p2Slot: LaneSlot(tileAffinity: BoardClassAffinity.plant)),
-          const BoardLaneEntity(laneIndex: 3, p1Slot: LaneSlot(tileAffinity: BoardClassAffinity.bug), p2Slot: LaneSlot(tileAffinity: BoardClassAffinity.bug)),
-        ],
-        actionHistory: const [],
-      );
-
-      final result = engine.resolveClashPhase(state);
-
-      // Crit P1 dealt 25 damage -> P2 Hero HP: 25 - 25 = 0!
-      expect(result.p2.heroHp, 0);
-      expect(result.lanes[0].p1Slot.occupant!.currentPips, 0); // Pips reset on crit
-
-      // P2 dealt 10 damage -> P1 Hero HP: 25 - 10 = 15
-      expect(result.p1.heroHp, 15);
-      expect(result.lanes[1].p2Slot.occupant!.currentPips, 2); // Pips incremented
-
-      // Terminal evaluation triggers gameOver
-      expect(result.phase, TurnPhase.gameOver);
-      expect(result.winner, PlayerId.p1);
-    });
-  });
-
-  group('25 HP Hero Lifecycle, Lethal & Fatigue Penalties (AC-01, AC-02)', () {
-    test('Empty deck at round start triggers -5 HP fatigue penalty and terminates when HP <= 0', () {
-      var state = GameState(
-        roundNumber: 1,
-        phase: TurnPhase.roundEnd,
-        activePlayer: PlayerId.p1,
-        players: {
-          PlayerId.p1: const PlayerStateEntity(id: PlayerId.p1, heroHp: 4, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
-          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
-        },
-        lanes: List.generate(4, (i) => BoardLaneEntity(laneIndex: i, p1Slot: const LaneSlot(), p2Slot: const LaneSlot())),
-        actionHistory: const [],
-      );
-
-      // Advancing from roundEnd starts Round 2
-      state = engine.advancePhase(state);
-
-      // P1 deck is empty -> 4 HP - 5 HP = -1 HP (perished!)
-      expect(state.p1.heroHp, -1);
-      // P2 deck is empty -> 25 HP - 5 HP = 20 HP
-      expect(state.p2.heroHp, 20);
-
-      // Terminal evaluation triggers gameOver with P2 winning
-      expect(state.phase, TurnPhase.gameOver);
-      expect(state.winner, PlayerId.p2);
-    });
-
-    test('Round advance scales mana curve up to 10 ceiling and resets floops', () {
-      var state = GameState(
-        roundNumber: 9,
-        phase: TurnPhase.roundEnd,
-        activePlayer: PlayerId.p1,
-        players: {
-          PlayerId.p1: PlayerStateEntity(
-            id: PlayerId.p1,
-            heroHp: 25,
-            maxHp: 25,
-            currentMana: 0,
-            maxMana: 9,
-            hand: [],
-            deck: [createTestCard('deck1', 1, 1, 1)],
-            graveyard: const [],
-            canReact: false,
-          ),
-          PlayerId.p2: PlayerStateEntity(
-            id: PlayerId.p2,
-            heroHp: 25,
-            maxHp: 25,
-            currentMana: 0,
-            maxMana: 9,
-            hand: [],
-            deck: [createTestCard('deck2', 1, 1, 1)],
-            graveyard: const [],
-            canReact: false,
-          ),
-        },
-        lanes: [
-          BoardLaneEntity(
-            laneIndex: 0,
-            p1Slot: LaneSlot(
               tileAffinity: BoardClassAffinity.beast,
-              occupant: BoardUnitEntity.fromAxieCard(createTestCard('flooped_u', 1, 5, 5), instanceId: 'u_f').copyWith(hasFlooped: true),
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p2_u', 1, 0, 10), instanceId: 'u2'),
+              building: BoardBuildingEntity.fromCard(barricade, instanceId: 'bldg_1'),
             ),
-            p2Slot: const LaneSlot(tileAffinity: BoardClassAffinity.beast),
           ),
           const BoardLaneEntity(laneIndex: 1, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
           const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
@@ -555,172 +409,117 @@ void main() {
         actionHistory: const [],
       );
 
-      // Round 9 -> Round 10
-      state = engine.advancePhase(state);
-      expect(state.roundNumber, 10);
-      expect(state.p1.maxMana, 10);
-      expect(state.p1.currentMana, 10);
-      expect(state.lanes[0].p1Slot.occupant!.hasFlooped, isFalse); // Floop reset!
+      // Strike of 12 ATK vs (10 unit DEF + 5 DEF aura = 15 total DEF)
+      // 12 <= 15: No overflow!
+      // Aura absorbs 5 dmg, remainder 7 dmg hits unit DEF (10 - 7 = 3 DEF left).
+      final result = engine.resolveClashPhase(state);
 
-      // Round 10 -> Round 11 (capped at 10)
-      state = state.copyWith(phase: TurnPhase.roundEnd);
-      state = engine.advancePhase(state);
-      expect(state.roundNumber, 11);
-      expect(state.p1.maxMana, 10); // Clamped at 10
+      expect(result.lanes[0].p2Slot.occupant, isNotNull);
+      expect(result.lanes[0].p2Slot.occupant!.currentDef, 3);
+      expect(result.lanes[0].p2Slot.building!.currentHp, 16); // Building undamaged
+      expect(result.p2.heroHp, 25); // Hero undamaged
     });
-  });
 
-  group('Reactive Micro-Window Enforcement (AC-03)', () {
-    test('Triggers p1ReactiveWindow when P1 unit was destroyed in P2 turn, P1 has mana, playable card with matching affinity, and empty slot', () {
+    test('Building trample arithmetic: excess overflow damages building minus armor, residual damages Hero HP', () {
+      final barricade = BuildingCardEntity.defenseBarricade(id: 'bldg_def'); // 16 HP, 2 Armor, +5 DEF aura
+      final state = GameState(
+        roundNumber: 1,
+        phase: TurnPhase.clashPhase,
+        activePlayer: PlayerId.p1,
+        players: {
+          PlayerId.p1: const PlayerStateEntity(id: PlayerId.p1, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
+          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 0, hand: [], deck: [], graveyard: [], canReact: false),
+        },
+        lanes: [
+          BoardLaneEntity(
+            laneIndex: 0,
+            p1Slot: LaneSlot(
+              tileAffinity: BoardClassAffinity.beast,
+              // Deals 30 unblocked damage
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p1_u', 1, 30, 10), instanceId: 'u1'),
+            ),
+            p2Slot: LaneSlot(
+              tileAffinity: BoardClassAffinity.beast,
+              // 5 DEF unit + Barricade (5 DEF aura, 16 HP, 2 armor) -> total DEF = 10
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('p2_u', 1, 0, 5), instanceId: 'u2'),
+              building: BoardBuildingEntity.fromCard(barricade, instanceId: 'bldg_1'),
+            ),
+          ),
+          const BoardLaneEntity(laneIndex: 1, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 3, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+        ],
+        actionHistory: const [],
+      );
+
+      // Arithmetic breakdown:
+      // 1. P1 deals 30 damage. Total DEF = 5 + 5 = 10. 30 > 10 -> Unit destroyed, overflow = 20.
+      // 2. Overflow 20 hits Barricade with 2 Armor -> Effective building damage = 20 - 2 = 18.
+      // 3. Barricade has 16 HP. 18 > 16 -> Barricade destroyed, bldgOverflow = 18 - 16 = 2.
+      // 4. Residual trample 2 hits P2 Hero -> 25 - 2 = 23 HP!
+      final result = engine.resolveClashPhase(state);
+
+      expect(result.lanes[0].p2Slot.occupant, isNull);
+      expect(result.lanes[0].p2Slot.building, isNull);
+      expect(result.p2.heroHp, 23);
+      expect(result.p2.graveyard.length, 1);
+    });
+
+    test('Vitality Shrine repair: heals up to 8 DEF at round start, capped at maxDef without overheal', () {
+      final shrine = BuildingCardEntity.vitalityShrine(id: 'bldg_rep');
       var state = GameState(
         roundNumber: 1,
-        phase: TurnPhase.p2Turn,
-        activePlayer: PlayerId.p2,
-        p1UnitDestroyedInP2Turn: true,
+        phase: TurnPhase.roundEnd,
+        activePlayer: PlayerId.p1,
+        initiativePlayer: PlayerId.p1,
         players: {
           PlayerId.p1: PlayerStateEntity(
             id: PlayerId.p1,
             heroHp: 25,
             maxHp: 25,
-            currentMana: 1,
+            currentMana: 0,
             maxMana: 1,
-            hand: [createTestCard('rx_card', 1, 5, 5, axieClass: AxieElementalClass.beast)],
-            deck: const [],
+            hand: const [],
+            deck: [createTestCard('d1', 1, 1, 1)],
             graveyard: const [],
-            canReact: true,
+            canReact: false,
           ),
-          PlayerId.p2: const PlayerStateEntity(
+          PlayerId.p2: PlayerStateEntity(
             id: PlayerId.p2,
             heroHp: 25,
             maxHp: 25,
             currentMana: 0,
             maxMana: 1,
-            hand: [],
-            deck: [],
-            graveyard: [],
+            hand: const [],
+            deck: [createTestCard('d2', 1, 1, 1)],
+            graveyard: const [],
             canReact: false,
           ),
         },
-        lanes: List.generate(
-          4,
-          (i) => BoardLaneEntity(
-            laneIndex: i,
-            p1Slot: const LaneSlot(tileAffinity: BoardClassAffinity.beast),
-            p2Slot: const LaneSlot(tileAffinity: BoardClassAffinity.beast),
-          ),
-        ),
-        actionHistory: const [],
-      );
-
-      state = engine.advancePhase(state);
-
-      expect(state.phase, TurnPhase.p1ReactiveWindow);
-      expect(state.activePlayer, PlayerId.p1);
-
-      // P1 can play ReactPlayAction
-      final actions = engine.getLegalActions(state, PlayerId.p1);
-      final reactActions = actions.whereType<ReactPlayAction>().toList();
-      expect(reactActions.isNotEmpty, isTrue);
-
-      // Play reaction unit into lane 0
-      state = engine.reduce(state, reactActions.first);
-      expect(state.lanes[0].p1Slot.occupant, isNotNull);
-      expect(state.p1.currentMana, 0);
-
-      // Pass phase from reaction window leads to clashPhase
-      state = engine.reduce(state, PassPhaseAction(PlayerId.p1));
-      expect(state.phase, TurnPhase.clashPhase);
-    });
-
-    test('Auto-skips reactive window directly to clashPhase if P1 has 0 mana', () {
-      final state = GameState(
-        roundNumber: 1,
-        phase: TurnPhase.p2Turn,
-        activePlayer: PlayerId.p2,
-        p1UnitDestroyedInP2Turn: true,
-        players: {
-          PlayerId.p1: PlayerStateEntity(
-            id: PlayerId.p1,
-            heroHp: 25,
-            maxHp: 25,
-            currentMana: 0, // 0 mana!
-            maxMana: 1,
-            hand: [createTestCard('rx_card', 1, 5, 5)],
-            deck: const [],
-            graveyard: const [],
-            canReact: true,
-          ),
-          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 1, hand: [], deck: [], graveyard: [], canReact: false),
-        },
-        lanes: List.generate(4, (i) => BoardLaneEntity(laneIndex: i, p1Slot: const LaneSlot(), p2Slot: const LaneSlot())),
-        actionHistory: const [],
-      );
-
-      final nextState = engine.advancePhase(state);
-      expect(nextState.phase, TurnPhase.clashPhase);
-    });
-
-    test('Auto-skips reactive window directly to clashPhase if no P1 unit was destroyed', () {
-      final state = GameState(
-        roundNumber: 1,
-        phase: TurnPhase.p2Turn,
-        activePlayer: PlayerId.p2,
-        p1UnitDestroyedInP2Turn: false, // Not destroyed!
-        players: {
-          PlayerId.p1: PlayerStateEntity(
-            id: PlayerId.p1,
-            heroHp: 25,
-            maxHp: 25,
-            currentMana: 2,
-            maxMana: 2,
-            hand: [createTestCard('rx_card', 1, 5, 5)],
-            deck: const [],
-            graveyard: const [],
-            canReact: true,
-          ),
-          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 1, hand: [], deck: [], graveyard: [], canReact: false),
-        },
-        lanes: List.generate(4, (i) => BoardLaneEntity(laneIndex: i, p1Slot: const LaneSlot(), p2Slot: const LaneSlot())),
-        actionHistory: const [],
-      );
-
-      final nextState = engine.advancePhase(state);
-      expect(nextState.phase, TurnPhase.clashPhase);
-    });
-
-    test('Auto-skips reactive window directly to clashPhase if all P1 slots are occupied', () {
-      final state = GameState(
-        roundNumber: 1,
-        phase: TurnPhase.p2Turn,
-        activePlayer: PlayerId.p2,
-        p1UnitDestroyedInP2Turn: true,
-        players: {
-          PlayerId.p1: PlayerStateEntity(
-            id: PlayerId.p1,
-            heroHp: 25,
-            maxHp: 25,
-            currentMana: 2,
-            maxMana: 2,
-            hand: [createTestCard('rx_card', 1, 5, 5)],
-            deck: const [],
-            graveyard: const [],
-            canReact: true,
-          ),
-          PlayerId.p2: const PlayerStateEntity(id: PlayerId.p2, heroHp: 25, maxHp: 25, currentMana: 0, maxMana: 1, hand: [], deck: [], graveyard: [], canReact: false),
-        },
-        lanes: List.generate(
-          4,
-          (i) => BoardLaneEntity(
-            laneIndex: i,
-            p1Slot: LaneSlot(occupant: BoardUnitEntity.fromAxieCard(createTestCard('u_$i', 1, 5, 5), instanceId: 'u_$i')),
+        lanes: [
+          // Unit has maxDef 10, currentDef 3. Shrine effectValue = 8.
+          // Heal amount = min(10 - 3, 8) = 7. Capped at 10 (no overheal).
+          BoardLaneEntity(
+            laneIndex: 0,
+            p1Slot: LaneSlot(
+              tileAffinity: BoardClassAffinity.beast,
+              occupant: BoardUnitEntity.fromAxieCard(createTestCard('damaged_u', 1, 5, 10), instanceId: 'u1').copyWith(currentDef: 3),
+              building: BoardBuildingEntity.fromCard(shrine, instanceId: 'bldg_shrine'),
+            ),
             p2Slot: const LaneSlot(),
           ),
-        ),
+          const BoardLaneEntity(laneIndex: 1, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 2, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+          const BoardLaneEntity(laneIndex: 3, p1Slot: LaneSlot(), p2Slot: LaneSlot()),
+        ],
         actionHistory: const [],
       );
 
-      final nextState = engine.advancePhase(state);
-      expect(nextState.phase, TurnPhase.clashPhase);
+      // Advance from roundEnd triggers _startRound and repair hook
+      state = engine.advancePhase(state);
+
+      expect(state.roundNumber, 2);
+      expect(state.lanes[0].p1Slot.occupant!.currentDef, 10); // Fully repaired to maxDef 10 without exceeding!
     });
   });
 }

@@ -2,12 +2,14 @@
 // [MODULE_NAME]: player_state_entity.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: Represents the state of a player during combat
-// [DEPENDENCIES]: axie_card_entity.dart, board_unit_entity.dart, combat_enums.dart
+// [INTENT]: Represents the state of a player during combat with mixed unit and building cards
+// [DEPENDENCIES]: axie_card_entity.dart, building_card_entity.dart, combat_card.dart, board_unit_entity.dart, combat_enums.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
 import '../axie_card_entity.dart';
+import 'building_card_entity.dart';
+import 'combat_card.dart';
 import 'board_unit_entity.dart';
 import 'combat_enums.dart';
 
@@ -17,8 +19,8 @@ class PlayerStateEntity {
   final int maxHp;
   final int currentMana;
   final int maxMana;
-  final List<AxieCardEntity> hand;
-  final List<AxieCardEntity> deck;
+  final List<CombatCard> hand;
+  final List<CombatCard> deck;
   final List<BoardUnitEntity> graveyard;
   final bool canReact;
   final bool hasCompletedMulligan;
@@ -43,14 +45,17 @@ class PlayerStateEntity {
     ],
   });
 
+  List<AxieCardEntity> get unitHand => hand.whereType<AxieCardEntity>().toList();
+  List<BuildingCardEntity> get buildingHand => hand.whereType<BuildingCardEntity>().toList();
+
   PlayerStateEntity copyWith({
     PlayerId? id,
     int? heroHp,
     int? maxHp,
     int? currentMana,
     int? maxMana,
-    List<AxieCardEntity>? hand,
-    List<AxieCardEntity>? deck,
+    List<CombatCard>? hand,
+    List<CombatCard>? deck,
     List<BoardUnitEntity>? graveyard,
     bool? canReact,
     bool? hasCompletedMulligan,

@@ -3,20 +3,24 @@
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
 // [INTENT]: In-memory Axie Card Model deserializing axpInfo level & Master Spec stats.
-// [DEPENDENCIES]: combat/combat_enums.dart
+// [DEPENDENCIES]: combat/combat_enums.dart, combat/combat_card.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
 import 'combat/combat_enums.dart';
+import 'combat/combat_card.dart';
 
 enum AxieElementalClass { beast, aquatic, plant, bird, bug, reptile, mech, dusk, dawn, unknown }
 enum FloopSource { mouth, tail }
 
-class AxieCardEntity {
+class AxieCardEntity implements CombatCard {
+  @override
   final String id;
+  @override
   final String name;
   final AxieElementalClass axieClass;
   final int level;
+  @override
   final int manaCost;
   final int baseAtk;
   final int baseDef;

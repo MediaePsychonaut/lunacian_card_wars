@@ -2,14 +2,13 @@
 // [MODULE_NAME]: game_action.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: Sealed classes for dispatched game actions
-// [DEPENDENCIES]: combat_enums.dart, axie_card_entity.dart, board_building_entity.dart
+// [INTENT]: Sealed classes for dispatched game actions including units, buildings, and tile drafting
+// [DEPENDENCIES]: combat_enums.dart, axie_card_entity.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern / Sealed Hierarchy
 // ===============================================================================
 
 import '../axie_card_entity.dart';
 import 'combat_enums.dart';
-import 'board_building_entity.dart';
 
 sealed class GameAction {
   const GameAction();
@@ -25,10 +24,10 @@ class PlayUnitAction extends GameAction {
 
 class PlayBuildingAction extends GameAction {
   final PlayerId player;
-  final BoardBuildingEntity building;
   final int laneIndex;
+  final String cardInstanceId;
 
-  const PlayBuildingAction(this.player, this.building, this.laneIndex);
+  const PlayBuildingAction(this.player, this.laneIndex, this.cardInstanceId);
 }
 
 class ActivateFloopAction extends GameAction {
