@@ -2,13 +2,14 @@
 // [MODULE_NAME]: axie_card_entity.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: In-memory Axie Card Model deserializing axpInfo level & Master Spec stats.
-// [DEPENDENCIES]: combat/combat_enums.dart, combat/combat_card.dart
+// [INTENT]: In-memory Axie Card Model deserializing axpInfo level & Master Spec stats with Floop abilities.
+// [DEPENDENCIES]: combat/combat_enums.dart, combat/combat_card.dart, combat/floop_ability_entity.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
 import 'combat/combat_enums.dart';
 import 'combat/combat_card.dart';
+import 'combat/floop_ability_entity.dart';
 
 enum AxieElementalClass { beast, aquatic, plant, bird, bug, reptile, mech, dusk, dawn, unknown }
 enum FloopSource { mouth, tail }
@@ -32,6 +33,7 @@ class AxieCardEntity implements CombatCard {
   final String spriteUrl;
   final String proxySpriteUrl;
   final Map<String, dynamic> rawGenes;
+  final FloopAbilityEntity? floop;
 
   const AxieCardEntity({
     required this.id,
@@ -49,6 +51,7 @@ class AxieCardEntity implements CombatCard {
     required this.spriteUrl,
     required this.proxySpriteUrl,
     required this.rawGenes,
+    this.floop,
   });
 
   int get atk => baseAtk;
@@ -65,6 +68,45 @@ class AxieCardEntity implements CombatCard {
     AxieElementalClass.reptile => BoardClassAffinity.reptile,
     _ => BoardClassAffinity.neutral,
   };
+
+  AxieCardEntity copyWith({
+    String? id,
+    String? name,
+    AxieElementalClass? axieClass,
+    int? level,
+    int? manaCost,
+    int? baseAtk,
+    int? baseDef,
+    int? initialPips,
+    int? maxPips,
+    String? mouthPartName,
+    String? tailPartName,
+    FloopSource? selectedFloop,
+    String? spriteUrl,
+    String? proxySpriteUrl,
+    Map<String, dynamic>? rawGenes,
+    FloopAbilityEntity? floop,
+    bool clearFloop = false,
+  }) {
+    return AxieCardEntity(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      axieClass: axieClass ?? this.axieClass,
+      level: level ?? this.level,
+      manaCost: manaCost ?? this.manaCost,
+      baseAtk: baseAtk ?? this.baseAtk,
+      baseDef: baseDef ?? this.baseDef,
+      initialPips: initialPips ?? this.initialPips,
+      maxPips: maxPips ?? this.maxPips,
+      mouthPartName: mouthPartName ?? this.mouthPartName,
+      tailPartName: tailPartName ?? this.tailPartName,
+      selectedFloop: selectedFloop ?? this.selectedFloop,
+      spriteUrl: spriteUrl ?? this.spriteUrl,
+      proxySpriteUrl: proxySpriteUrl ?? this.proxySpriteUrl,
+      rawGenes: rawGenes ?? this.rawGenes,
+      floop: clearFloop ? null : (floop ?? this.floop),
+    );
+  }
 
   factory AxieCardEntity.fromLocalJson(Map<String, dynamic> json) => AxieCardEntity.fromGraphQL(json);
 

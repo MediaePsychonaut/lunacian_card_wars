@@ -2,18 +2,21 @@
 // [MODULE_NAME]: player_state_entity.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: Represents the state of a player during combat with mixed unit and building cards
-// [DEPENDENCIES]: axie_card_entity.dart, building_card_entity.dart, combat_card.dart, board_unit_entity.dart, combat_enums.dart
+// [INTENT]: Represents the state of a player during combat with 7-card hand capacity and mixed unit, building, and spell cards
+// [DEPENDENCIES]: axie_card_entity.dart, building_card_entity.dart, spell_card_entity.dart, combat_card.dart, board_unit_entity.dart, combat_enums.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
 import '../axie_card_entity.dart';
 import 'building_card_entity.dart';
+import 'spell_card_entity.dart';
 import 'combat_card.dart';
 import 'board_unit_entity.dart';
 import 'combat_enums.dart';
 
 class PlayerStateEntity {
+  static const int maxHandCapacity = 7;
+
   final PlayerId id;
   final int heroHp;
   final int maxHp;
@@ -47,6 +50,7 @@ class PlayerStateEntity {
 
   List<AxieCardEntity> get unitHand => hand.whereType<AxieCardEntity>().toList();
   List<BuildingCardEntity> get buildingHand => hand.whereType<BuildingCardEntity>().toList();
+  List<SpellCardEntity> get spellHand => hand.whereType<SpellCardEntity>().toList();
 
   PlayerStateEntity copyWith({
     PlayerId? id,

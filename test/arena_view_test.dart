@@ -2,7 +2,7 @@
 // [MODULE_NAME]: arena_view_test.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Testing / Presentation
-// [INTENT]: Test the ArenaView FSM Telemetry Inspector rendering, 4-lane matrix, side-by-side dual cockpits, 20-card tactical decks, building telemetry, and zero RenderFlex overflow.
+// [INTENT]: Test the ArenaView FSM Telemetry Inspector rendering, 4-lane matrix, side-by-side dual cockpits, visible mulligan opening hand, 7-card hand gauge, tactical spells, and zero RenderFlex overflow.
 // [DEPENDENCIES]: package:flutter/material.dart, package:flutter_test/flutter_test.dart, package:flutter_riverpod/flutter_riverpod.dart, package:lunacian_card_wars/src/presentation/views/arena_view.dart, package:lunacian_card_wars/src/presentation/controllers/combat_engine_controller.dart
 // [ARCHITECTURE]: Widget Tests
 // ===============================================================================
@@ -20,7 +20,7 @@ void main() {
     HttpOverrides.global = _DummyHttpOverrides();
   });
 
-  testWidgets('ArenaView renders FSM Telemetry Inspector with 4-lane matrix and side-by-side dual cockpits on 1920x1080', (WidgetTester tester) async {
+  testWidgets('ArenaView renders FSM Telemetry Inspector with 4-lane matrix, visible mulligan hand, and dual cockpits on 1920x1080', (WidgetTester tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -51,8 +51,9 @@ void main() {
     // 2. Verify Canonical 25 HP Hero indicators
     expect(find.textContaining('Hero HP: 25/25'), findsNWidgets(2));
 
-    // 3. Verify Initial 20-Card Tactical Deck counts (0 in hand, 20 in deck during tile placement)
+    // 3. Verify Initial 20-Card Tactical Deck counts & 7-card hand gauge (0 in hand, 20 in deck during tile placement)
     expect(find.textContaining('Deck: 20/20'), findsNWidgets(2));
+    expect(find.textContaining('Hand: 0/7 (Max: 7)'), findsNWidgets(2));
 
     // 4. Verify 4-Lane Board Matrix Telemetry (Dual-Tile Topology + Buildings)
     expect(find.textContaining('4-LANE BOARD MATRIX TELEMETRY (8-LANDSCAPE DUAL-TILE TOPOLOGY)'), findsOneWidget);
@@ -94,6 +95,7 @@ void main() {
     // Now all 8 tiles are placed, 4 cards drawn each, and phase is turnZeroMulligan
     expect(find.text('Phase: turnZeroMulligan'), findsOneWidget);
     expect(find.textContaining('Deck: 16/20'), findsNWidgets(2));
+    expect(find.textContaining('Hand: 4/7 (Max: 7)'), findsNWidgets(2));
 
     // Verify dual tile badges are now populated
     expect(find.textContaining('[P1: BEAST]'), findsOneWidget);
@@ -101,10 +103,39 @@ void main() {
     expect(find.textContaining('[P1: PLANT]'), findsOneWidget);
     expect(find.textContaining('[P1: BUG]'), findsOneWidget);
 
-    // Verify Mulligan controls appear
-    expect(find.textContaining('Keep Hand / Pass Mulligan'), findsWidgets);
+    // 7. Verify AC-01 Visible Mulligan Opening Hand & Selection Controls
+    expect(find.textContaining('Turn Zero: Opening Hand Mulligan'), findsWidgets);
+    expect(find.textContaining('Keep Entire Hand'), findsWidgets);
+    expect(find.textContaining('Mulligan Selected (0)'), findsWidgets);
 
-    // 7. Advance through Mulligan to Round 1
+    // Verify opening hand cards render with archetype badges (🐾 Axie / 🏛️ Building / ✨ Spell)
+    expect(find.textContaining('🐾'), findsWidgets);
+
+    // 8. Test selective mulligan toggle interaction for active player (P1)
+    final firstCardFinder = find.byWidgetPredicate(
+      (widget) => widget is Text && widget.data != null && widget.data!.contains('🐾 [p1_'),
+    );
+    expect(firstCardFinder, findsWidgets);
+
+    await tester.tap(firstCardFinder.first);
+    await tester.pump();
+
+    // Verify count incremented to 1
+    expect(find.textContaining('Mulligan Selected (1)'), findsOneWidget);
+
+    // Toggle again to deselect
+    await tester.tap(firstCardFinder.first);
+    await tester.pump();
+    expect(find.textContaining('Mulligan Selected (0)'), findsWidgets);
+
+    // Keep entire hand for P1
+    await tester.tap(find.text('Keep Entire Hand').first);
+    await tester.pump();
+
+    // P1 completed mulligan -> lock badge rendered
+    expect(find.textContaining('Mulligan: CONFIRMED. Waiting for opponent...'), findsOneWidget);
+
+    // 9. Advance through Mulligan to Round 1
     await tester.tap(find.text('Advance Phase'));
     await tester.pump();
 
@@ -115,11 +146,15 @@ void main() {
     expect(find.textContaining('Mana: 1/1'), findsWidgets);
 
     // Verify Active Combat Controls appear in both cockpits
-    expect(find.textContaining('Select Card to Deploy (P1 Hand):'), findsOneWidget);
-    expect(find.textContaining('Select Card to Deploy (P2 Hand):'), findsOneWidget);
+    expect(find.textContaining('Select Card to Deploy (P1 Hand: 4/7):'), findsOneWidget);
+    expect(find.textContaining('Select Card to Deploy (P2 Hand: 4/7):'), findsOneWidget);
     expect(find.textContaining('Deploy Selected to Lane 0'), findsWidgets);
 
-    // 8. Verify Monospace Telemetry Event Stream
+    // Floop buttons render
+    expect(find.textContaining('Floop (P1):'), findsOneWidget);
+    expect(find.textContaining('Floop (P2):'), findsOneWidget);
+
+    // 10. Verify Monospace Telemetry Event Stream
     expect(find.textContaining('FSM STATE TELEMETRY & EVENT STREAM'), findsOneWidget);
 
     // Check no RenderFlex overflow exception was thrown
@@ -148,6 +183,7 @@ void main() {
 
     expect(find.text('Return to Main Menu'), findsOneWidget);
     expect(find.textContaining('Hero HP: 25/25'), findsNWidgets(2));
+    expect(find.textContaining('Hand: 0/7 (Max: 7)'), findsNWidgets(2));
     expect(find.textContaining('4-LANE BOARD MATRIX TELEMETRY'), findsOneWidget);
     expect(find.textContaining('SYMMETRICAL DUAL-PLAYER CONSOLE'), findsOneWidget);
     expect(find.textContaining('=== PLAYER 1 TESTING COCKPIT ==='), findsOneWidget);

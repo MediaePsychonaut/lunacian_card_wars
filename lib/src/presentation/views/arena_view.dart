@@ -2,8 +2,8 @@
 // [MODULE_NAME]: arena_view.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Presentation / Views
-// [INTENT]: Developer-grade FSM State Graph & Telemetry Inspector with 4-lane matrix, building telemetry, and symmetrical side-by-side dual-player cockpits.
-// [DEPENDENCIES]: package:flutter/material.dart, package:flutter_riverpod/flutter_riverpod.dart, ../controllers/app_navigation_controller.dart, ../controllers/combat_engine_controller.dart, widgets/atmospheric_battlefield_backdrop.dart, ../../domain/entities/combat/combat_enums.dart, ../../domain/entities/combat/board_lane_entity.dart, ../../domain/entities/combat/board_unit_entity.dart, ../../domain/entities/combat/board_building_entity.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/axie_card_entity.dart, ../../domain/entities/combat/game_state.dart, ../../domain/entities/combat/player_state_entity.dart
+// [INTENT]: Developer-grade FSM State Graph & Telemetry Inspector with 4-lane matrix, building telemetry, visible mulligan hand selection, 7-card hand ceiling, canonical Axie floops, and tactical spells.
+// [DEPENDENCIES]: package:flutter/material.dart, package:flutter_riverpod/flutter_riverpod.dart, ../controllers/app_navigation_controller.dart, ../controllers/combat_engine_controller.dart, widgets/atmospheric_battlefield_backdrop.dart, ../../domain/entities/combat/combat_enums.dart, ../../domain/entities/combat/board_lane_entity.dart, ../../domain/entities/combat/board_unit_entity.dart, ../../domain/entities/combat/board_building_entity.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/combat/spell_card_entity.dart, ../../domain/entities/combat/floop_ability_entity.dart, ../../domain/entities/combat/combat_card.dart, ../../domain/entities/axie_card_entity.dart, ../../domain/entities/combat/game_state.dart, ../../domain/entities/combat/player_state_entity.dart
 // [ARCHITECTURE]: ConsumerWidget
 // ===============================================================================
 
@@ -17,6 +17,7 @@ import '../../domain/entities/combat/board_lane_entity.dart';
 import '../../domain/entities/combat/board_unit_entity.dart';
 import '../../domain/entities/combat/board_building_entity.dart';
 import '../../domain/entities/combat/building_card_entity.dart';
+import '../../domain/entities/combat/spell_card_entity.dart';
 import '../../domain/entities/axie_card_entity.dart';
 import '../../domain/entities/combat/game_state.dart';
 import '../../domain/entities/combat/player_state_entity.dart';
@@ -341,14 +342,16 @@ class ArenaView extends ConsumerWidget {
               style: const TextStyle(color: Colors.cyanAccent, fontSize: 10),
               overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              'Flooped: ${occupant.hasFlooped ? "YES" : "NO"}',
-              style: TextStyle(
-                color: occupant.hasFlooped ? Colors.orangeAccent : Colors.white70,
-                fontSize: 10,
+            if (occupant.floop != null)
+              Text(
+                'Floop: ${occupant.floop!.name} (${occupant.floop!.manaCost}M) [${slot.hasFloopedThisRound ? "USED" : "READY"}]',
+                style: TextStyle(
+                  color: slot.hasFloopedThisRound ? Colors.orangeAccent : Colors.purpleAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
           const SizedBox(height: 4),
           if (building == null)
@@ -631,12 +634,16 @@ class ArenaView extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
 
-          // Deck, Graveyard, and Mulligan Badges
+          // Hand Gauge, Deck, Graveyard, and Mulligan Badges
           Wrap(
             spacing: 8,
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              Text(
+                'Hand: ${player.hand.length}/7 (Max: 7)',
+                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
               Text(
                 'Deck: ${player.deck.length}/20',
                 style: const TextStyle(color: Colors.white70, fontSize: 11),
@@ -804,6 +811,35 @@ class ArenaView extends ConsumerWidget {
   ) {
     final isMulliganPending = !playerState.hasCompletedMulligan;
     final isActive = gameState.activePlayer == player;
+    final selectionSet = player == PlayerId.p1 ? controller.p1MulliganSelection : controller.p2MulliganSelection;
+    final selectedCount = selectionSet.length;
+
+    if (!isMulliganPending) {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.greenAccent, size: 16),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Mulligan: CONFIRMED. Waiting for opponent...',
+                style: TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -814,33 +850,112 @@ class ArenaView extends ConsumerWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Hand: ${playerState.hand.length} Cards | Status: ${isMulliganPending ? "PENDING" : "COMPLETE"}',
+          'Hand: ${playerState.hand.length}/7 Cards | Status: PENDING | Select cards to discard & redraw:',
           style: const TextStyle(color: Colors.white70, fontSize: 10),
         ),
         const SizedBox(height: 6),
+        // 4-Card Opening Hand Display with selection toggles
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: playerState.hand.map((card) {
+            final isSelected = selectionSet.contains(card.id);
+            String cardLabel;
+            Color cardColor;
+            if (card is AxieCardEntity) {
+              cardLabel = '🐾 [${card.id}] ${card.name} (Cost:${card.manaCost} | A:${card.atk} D:${card.def} | ${card.affinity.name.toUpperCase()})';
+              cardColor = _affinityColor(card.affinity);
+            } else if (card is BuildingCardEntity) {
+              cardLabel = '🏛️ [${card.id}] ${card.name} (Cost:${card.manaCost} | HP:${card.maxHp} Arm:${card.armorReduction})';
+              cardColor = Colors.tealAccent;
+            } else if (card is SpellCardEntity) {
+              cardLabel = '✨ [${card.id}] ${card.name} (Cost:${card.manaCost} | ${card.targetType.name} | ${card.effectType.name}:${card.effectValue})';
+              cardColor = Colors.purpleAccent;
+            } else {
+              cardLabel = '[${card.id}] ${card.name} (Cost:${card.manaCost})';
+              cardColor = Colors.amberAccent;
+            }
+
+            return InkWell(
+              onTap: isActive ? () => controller.toggleMulliganCard(player, card.id) : null,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.red.withValues(alpha: 0.25)
+                      : Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isSelected ? Colors.redAccent : cardColor.withValues(alpha: 0.4),
+                    width: isSelected ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                      size: 14,
+                      color: isSelected ? Colors.redAccent : Colors.white60,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      cardLabel,
+                      style: TextStyle(
+                        color: isSelected ? Colors.redAccent : Colors.white,
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        decoration: isSelected ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 6,
           runSpacing: 4,
           children: [
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.amberAccent,
-                side: BorderSide(color: isMulliganPending && isActive ? Colors.amberAccent : Colors.white24),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.swap_horiz, size: 14),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: (isMulliganPending && isActive && selectedCount > 0)
+                    ? Colors.amber.shade800
+                    : Colors.black26,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
-              onPressed: isMulliganPending && isActive && playerState.hand.isNotEmpty
-                  ? () => controller.mulliganCards(player, [playerState.hand.first.id])
+              onPressed: (isMulliganPending && isActive && selectedCount > 0)
+                  ? () => controller.confirmMulligan(player)
                   : null,
-              child: Text('Mulligan ${player.name.toUpperCase()} (Swap First Card)', style: const TextStyle(fontSize: 10)),
+              label: Text(
+                'Mulligan Selected ($selectedCount)',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
+              icon: const Icon(Icons.check, size: 14),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.greenAccent,
-                side: BorderSide(color: isMulliganPending && isActive ? Colors.greenAccent : Colors.white24),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                side: BorderSide(
+                  color: (isMulliganPending && isActive)
+                      ? Colors.greenAccent
+                      : Colors.white24,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
-              onPressed: isMulliganPending && isActive ? () => controller.passTurn(player) : null,
-              child: const Text('Keep Hand / Pass Mulligan', style: TextStyle(fontSize: 10)),
+              onPressed: (isMulliganPending && isActive)
+                  ? () => controller.keepEntireHand(player)
+                  : null,
+              label: const Text(
+                'Keep Entire Hand',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -859,6 +974,7 @@ class ArenaView extends ConsumerWidget {
     final selectedLane = controller.selectedLaneFor(player);
     final validation = controller.canDeploySelected(player);
     final isCardSelected = selectedCardId != null;
+    final selectedCard = playerState.hand.where((c) => c.id == selectedCardId).firstOrNull;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,7 +986,7 @@ class ArenaView extends ConsumerWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'Select Card to Deploy (${player.name.toUpperCase()} Hand):',
+                'Select Card to Deploy (${player.name.toUpperCase()} Hand: ${playerState.hand.length}/7):',
                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
               ),
             ),
@@ -889,7 +1005,7 @@ class ArenaView extends ConsumerWidget {
                 final color = _affinityColor(card.affinity);
                 return ChoiceChip(
                   label: Text(
-                    '[${card.id}] ${card.name} | ${card.affinity.name.toUpperCase()} (Cost: ${card.manaCost} | A:${card.atk} D:${card.def})',
+                    '🐾 [${card.id}] ${card.name} | ${card.affinity.name.toUpperCase()} (Cost: ${card.manaCost} | A:${card.atk} D:${card.def})',
                     style: TextStyle(
                       color: isSelected ? Colors.black : Colors.white,
                       fontSize: 10,
@@ -915,6 +1031,22 @@ class ArenaView extends ConsumerWidget {
                   ),
                   selected: isSelected,
                   selectedColor: Colors.tealAccent,
+                  backgroundColor: Colors.black45,
+                  onSelected: (_) => controller.selectCardFor(player, card.id),
+                );
+              } else if (card is SpellCardEntity) {
+                return ChoiceChip(
+                  label: Text(
+                    '✨ [${card.id}] ${card.name} (Cost: ${card.manaCost} | ${card.effectType.name.toUpperCase()}: ${card.effectValue})',
+                    style: TextStyle(
+                      color: isSelected ? Colors.black : Colors.purpleAccent,
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: Colors.purpleAccent,
                   backgroundColor: Colors.black45,
                   onSelected: (_) => controller.selectCardFor(player, card.id),
                 );
@@ -978,14 +1110,23 @@ class ArenaView extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
 
-        // Summon Button & Feedback
+        // Summon / Cast Button & Feedback
         Row(
           children: [
             ElevatedButton.icon(
-              icon: const Icon(Icons.upload, size: 13),
-              label: Text('Deploy Selected to Lane $selectedLane'),
+              icon: Icon(
+                selectedCard is SpellCardEntity ? Icons.auto_fix_high : Icons.upload,
+                size: 13,
+              ),
+              label: Text(
+                selectedCard is SpellCardEntity
+                    ? 'Cast ${selectedCard.name} to Lane $selectedLane'
+                    : 'Deploy Selected to Lane $selectedLane',
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: validation.canDeploy ? Colors.teal.shade700 : Colors.black38,
+                backgroundColor: validation.canDeploy
+                    ? (selectedCard is SpellCardEntity ? Colors.purple.shade700 : Colors.teal.shade700)
+                    : Colors.black38,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
@@ -1027,11 +1168,26 @@ class ArenaView extends ConsumerWidget {
               spacing: 4,
               runSpacing: 4,
               children: List.generate(4, (i) {
-                final unit = gameState.lanes[i].getSlot(player).occupant;
+                final slot = gameState.lanes[i].getSlot(player);
+                final unit = slot.occupant;
+                final floop = unit?.floop;
+                final hasFlooped = slot.hasFloopedThisRound;
                 final canFloop = (gameState.phase == TurnPhase.p1Turn || gameState.phase == TurnPhase.p2Turn) &&
                     gameState.activePlayer == player &&
                     unit != null &&
-                    !unit.hasFlooped;
+                    floop != null &&
+                    !hasFlooped &&
+                    playerState.currentMana >= floop.manaCost;
+
+                String floopText;
+                if (hasFlooped) {
+                  floopText = 'L$i: USED';
+                } else if (floop != null) {
+                  floopText = 'Floop L$i: ${floop.name} (${floop.manaCost}M)';
+                } else {
+                  floopText = 'Floop L$i';
+                }
+
                 return ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: canFloop ? Colors.purple.shade700 : Colors.black26,
@@ -1040,7 +1196,7 @@ class ArenaView extends ConsumerWidget {
                     minimumSize: const Size(30, 24),
                   ),
                   onPressed: canFloop ? () => controller.triggerFloop(player, i) : null,
-                  child: Text('Floop ${player.name.toUpperCase()} L$i', style: const TextStyle(fontSize: 9)),
+                  child: Text(floopText, style: const TextStyle(fontSize: 9)),
                 );
               }),
             ),

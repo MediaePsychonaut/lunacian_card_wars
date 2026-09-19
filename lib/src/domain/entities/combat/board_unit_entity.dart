@@ -2,12 +2,13 @@
 // [MODULE_NAME]: board_unit_entity.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: Represents a unit currently deployed on the board
-// [DEPENDENCIES]: axie_card_entity.dart
+// [INTENT]: Represents an Axie unit currently deployed on the board with Floop ability
+// [DEPENDENCIES]: axie_card_entity.dart, floop_ability_entity.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
 import '../axie_card_entity.dart';
+import 'floop_ability_entity.dart';
 
 class BoardUnitEntity {
   final String instanceId;
@@ -23,6 +24,7 @@ class BoardUnitEntity {
   final FloopSource selectedFloop;
   final String spriteUrl;
   final String proxySpriteUrl;
+  final FloopAbilityEntity? floop;
 
   const BoardUnitEntity({
     required this.instanceId,
@@ -38,7 +40,11 @@ class BoardUnitEntity {
     required this.selectedFloop,
     required this.spriteUrl,
     required this.proxySpriteUrl,
+    this.floop,
   });
+
+  int get baseAtk => currentAtk;
+  int get baseDef => maxDef;
 
   BoardUnitEntity copyWith({
     String? instanceId,
@@ -46,29 +52,34 @@ class BoardUnitEntity {
     String? name,
     AxieElementalClass? axieClass,
     int? currentAtk,
+    int? baseAtk,
     int? currentDef,
     int? maxDef,
+    int? baseDef,
     int? currentPips,
     int? maxPips,
     bool? hasFlooped,
     FloopSource? selectedFloop,
     String? spriteUrl,
     String? proxySpriteUrl,
+    FloopAbilityEntity? floop,
+    bool clearFloop = false,
   }) {
     return BoardUnitEntity(
       instanceId: instanceId ?? this.instanceId,
       axieId: axieId ?? this.axieId,
       name: name ?? this.name,
       axieClass: axieClass ?? this.axieClass,
-      currentAtk: currentAtk ?? this.currentAtk,
+      currentAtk: currentAtk ?? baseAtk ?? this.currentAtk,
       currentDef: currentDef ?? this.currentDef,
-      maxDef: maxDef ?? this.maxDef,
+      maxDef: maxDef ?? baseDef ?? this.maxDef,
       currentPips: currentPips ?? this.currentPips,
       maxPips: maxPips ?? this.maxPips,
       hasFlooped: hasFlooped ?? this.hasFlooped,
       selectedFloop: selectedFloop ?? this.selectedFloop,
       spriteUrl: spriteUrl ?? this.spriteUrl,
       proxySpriteUrl: proxySpriteUrl ?? this.proxySpriteUrl,
+      floop: clearFloop ? null : (floop ?? this.floop),
     );
   }
 
@@ -87,6 +98,7 @@ class BoardUnitEntity {
       selectedFloop: card.selectedFloop,
       spriteUrl: card.spriteUrl,
       proxySpriteUrl: card.proxySpriteUrl,
+      floop: card.floop,
     );
   }
 }

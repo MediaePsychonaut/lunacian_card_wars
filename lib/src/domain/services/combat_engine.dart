@@ -2,8 +2,8 @@
 // [MODULE_NAME]: combat_engine.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Services
-// [INTENT]: Pure deterministic engine for combat rules, interleaved tile drafting, priority inversion, tactical building auras, and lethal short-circuit clash
-// [DEPENDENCIES]: ../entities/combat/combat_enums.dart, ../entities/combat/game_state.dart, ../entities/combat/player_state_entity.dart, ../entities/combat/board_lane_entity.dart, ../entities/combat/game_action.dart, ../entities/combat/board_unit_entity.dart, ../entities/combat/board_building_entity.dart, ../entities/combat/building_card_entity.dart, ../entities/combat/combat_card.dart, ../entities/axie_card_entity.dart
+// [INTENT]: Pure deterministic engine for combat rules, interleaved drafting, priority inversion, tactical buildings, floops, spells, and early lethal short-circuit
+// [DEPENDENCIES]: ../entities/combat/combat_enums.dart, ../entities/combat/game_state.dart, ../entities/combat/player_state_entity.dart, ../entities/combat/board_lane_entity.dart, ../entities/combat/game_action.dart, ../entities/combat/board_unit_entity.dart, ../entities/combat/board_building_entity.dart, ../entities/combat/building_card_entity.dart, ../entities/combat/spell_card_entity.dart, ../entities/combat/floop_ability_entity.dart, ../entities/combat/combat_card.dart, ../entities/axie_card_entity.dart, axie_card_factory.dart
 // [ARCHITECTURE]: Pure Domain Service
 // ===============================================================================
 
@@ -16,17 +16,23 @@ import '../entities/combat/game_action.dart';
 import '../entities/combat/board_unit_entity.dart';
 import '../entities/combat/board_building_entity.dart';
 import '../entities/combat/building_card_entity.dart';
+import '../entities/combat/spell_card_entity.dart';
+import '../entities/combat/floop_ability_entity.dart';
 import '../entities/combat/combat_card.dart';
 import '../entities/axie_card_entity.dart';
+import 'axie_card_factory.dart';
 
 class CombatEngine {
   GameState initializeGame({
-    required List<CombatCard> p1Deck,
-    required List<CombatCard> p2Deck,
+    List<CombatCard>? p1Deck,
+    List<CombatCard>? p2Deck,
     List<BoardClassAffinity>? p1Landscapes,
     List<BoardClassAffinity>? p2Landscapes,
     PlayerId initialActivePlayer = PlayerId.p1,
   }) {
+    final effectiveP1Deck = p1Deck ?? AxieCardFactory.createCanonicalDeck('p1');
+    final effectiveP2Deck = p2Deck ?? AxieCardFactory.createCanonicalDeck('p2');
+
     final p1L = p1Landscapes ??
         const [
           BoardClassAffinity.beast,
@@ -49,7 +55,7 @@ class CombatEngine {
       currentMana: 0,
       maxMana: 0,
       hand: const [],
-      deck: List<CombatCard>.from(p1Deck),
+      deck: List<CombatCard>.from(effectiveP1Deck),
       graveyard: const [],
       canReact: false,
       hasCompletedMulligan: false,
@@ -63,7 +69,7 @@ class CombatEngine {
       currentMana: 0,
       maxMana: 0,
       hand: const [],
-      deck: List<CombatCard>.from(p2Deck),
+      deck: List<CombatCard>.from(effectiveP2Deck),
       graveyard: const [],
       canReact: false,
       hasCompletedMulligan: false,
@@ -96,6 +102,61 @@ class CombatEngine {
       ],
       p1UnitDestroyedInP2Turn: false,
     );
+  }
+
+  GameState drawCard(GameState state, PlayerId player) {
+    final p = state.players[player]!;
+    if (p.deck.isEmpty) {
+      final newHp = p.heroHp - 5;
+      final updatedPlayer = p.copyWith(heroHp: newHp);
+      final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
+      updatedPlayers[player] = updatedPlayer;
+
+      final logMsg = '[Fatigue Penalty] ${player.name.toUpperCase()} deck is empty! Suffered -5 HP fatigue damage (HP: $newHp).';
+
+      PlayerId? winner = state.winner;
+      TurnPhase phase = state.phase;
+      if (newHp <= 0 && winner == null) {
+        final opponent = (player == PlayerId.p1) ? PlayerId.p2 : PlayerId.p1;
+        winner = opponent;
+        phase = TurnPhase.gameOver;
+      }
+
+      return state.copyWith(
+        players: updatedPlayers,
+        winner: winner,
+        phase: phase,
+        logs: [...state.logs, logMsg],
+      );
+    }
+
+    final drawnCard = p.deck.first;
+    final remainingDeck = p.deck.sublist(1);
+
+    if (p.hand.length < PlayerStateEntity.maxHandCapacity) {
+      final newHand = [...p.hand, drawnCard];
+      final updatedPlayer = p.copyWith(hand: newHand, deck: remainingDeck);
+      final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
+      updatedPlayers[player] = updatedPlayer;
+
+      final logMsg = '[Draw] ${player.name.toUpperCase()} drew "${drawnCard.name}". Hand: ${newHand.length}/${PlayerStateEntity.maxHandCapacity}.';
+      return state.copyWith(
+        players: updatedPlayers,
+        logs: [...state.logs, logMsg],
+      );
+    } else {
+      // Overdraw penalty: card sent to bottom of deck without shuffle! Hand remains unchanged.
+      final newDeck = [...remainingDeck, drawnCard];
+      final updatedPlayer = p.copyWith(deck: newDeck);
+      final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
+      updatedPlayers[player] = updatedPlayer;
+
+      final logMsg = 'OVERDRAW PENALTY: Player ${player.name} hand is full (7/7). Card [${drawnCard.name}] sent to bottom of deck.';
+      return state.copyWith(
+        players: updatedPlayers,
+        logs: [...state.logs, logMsg],
+      );
+    }
   }
 
   int getEffectiveAtk(GameState state, int laneIndex, PlayerId player) {
@@ -217,10 +278,25 @@ class CombatEngine {
           }
         }
       }
+      // Spells
+      for (final card in playerState.spellHand) {
+        if (playerState.currentMana >= card.manaCost) {
+          for (var i = 0; i < state.lanes.length; i++) {
+            actions.add(PlaySpellAction(
+              player: player,
+              cardInstanceId: card.id,
+              targetLaneIndex: i,
+            ));
+          }
+        }
+      }
       // Floop
       for (var i = 0; i < state.lanes.length; i++) {
         final slot = state.lanes[i].getSlot(player);
-        if (slot.occupant != null && !slot.occupant!.hasFlooped) {
+        if (slot.occupant != null &&
+            !slot.hasFloopedThisRound &&
+            slot.occupant!.floop != null &&
+            playerState.currentMana >= slot.occupant!.floop!.manaCost) {
           actions.add(ActivateFloopAction(player, i));
         }
       }
@@ -241,6 +317,7 @@ class CombatEngine {
     final player = switch (action) {
       PlayUnitAction a => a.player,
       PlayBuildingAction a => a.player,
+      PlaySpellAction a => a.player,
       ActivateFloopAction a => a.player,
       PassPhaseAction a => a.player,
       ReactPlayAction a => a.player,
@@ -260,6 +337,11 @@ class CombatEngine {
           }
         } else if (action is PlayBuildingAction && legalAction is PlayBuildingAction) {
           if (action.cardInstanceId == legalAction.cardInstanceId && action.laneIndex == legalAction.laneIndex) {
+            isLegal = true;
+            break;
+          }
+        } else if (action is PlaySpellAction && legalAction is PlaySpellAction) {
+          if (action.cardInstanceId == legalAction.cardInstanceId && action.targetLaneIndex == legalAction.targetLaneIndex) {
             isLegal = true;
             break;
           }
@@ -312,6 +394,9 @@ class CombatEngine {
         break;
       case PlayBuildingAction a:
         newState = _playBuilding(newState, a.player, a.cardInstanceId, a.laneIndex);
+        break;
+      case PlaySpellAction a:
+        newState = _playSpell(newState, a.player, a.cardInstanceId, a.targetLaneIndex, a.targetPlayer);
         break;
       case ActivateFloopAction a:
         newState = _activateFloop(newState, a.player, a.laneIndex);
@@ -390,11 +475,18 @@ class CombatEngine {
     final cardsToReplace = hand.where((c) => cardInstanceIdsToReplace.contains(c.id)).toList();
     final remainingHand = hand.where((c) => !cardInstanceIdsToReplace.contains(c.id)).toList();
 
-    final countToDraw = cardsToReplace.length;
-    final drawnCards = deck.take(countToDraw).toList();
-    final remainingDeck = deck.skip(countToDraw).toList();
+    // Reinsert discarded cards back into player deck
+    final deckWithReinserted = [...deck, ...cardsToReplace];
 
-    remainingDeck.addAll(cardsToReplace);
+    // Seeded deterministic shuffle
+    final seed = state.roundNumber * 31 + cardInstanceIdsToReplace.length * 17 + player.index;
+    final rng = Random(seed);
+    deckWithReinserted.shuffle(rng);
+
+    // Draw replacement cards equal to discarded count
+    final countToDraw = cardsToReplace.length;
+    final drawnCards = deckWithReinserted.take(countToDraw).toList();
+    final remainingDeck = deckWithReinserted.skip(countToDraw).toList();
 
     final newHand = [...remainingHand, ...drawnCards];
     final updatedPlayer = playerState.copyWith(
@@ -406,7 +498,7 @@ class CombatEngine {
     final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
     updatedPlayers[player] = updatedPlayer;
 
-    final logMsg = '[Turn Zero] ${player.name.toUpperCase()} mulliganed ${cardsToReplace.length} card(s).';
+    final logMsg = '[Turn Zero] ${player.name.toUpperCase()} mulliganed ${cardsToReplace.length} card(s). Deck reshuffled with seeded RNG.';
     final intermediateState = state.copyWith(
       players: updatedPlayers,
       logs: [...state.logs, logMsg],
@@ -580,23 +672,287 @@ class CombatEngine {
     );
   }
 
+  GameState _playSpell(GameState state, PlayerId player, String cardInstanceId, int targetLaneIndex, PlayerId? targetPlayer) {
+    final playerState = state.players[player]!;
+    final cardIndex = playerState.hand.indexWhere((c) => c.id == cardInstanceId);
+    if (cardIndex == -1) return state;
+    final card = playerState.hand[cardIndex];
+    if (card is! SpellCardEntity) return state;
+    if (playerState.currentMana < card.manaCost) return state;
+
+    final updatedHand = List<CombatCard>.from(playerState.hand)..removeAt(cardIndex);
+    final updatedMana = playerState.currentMana - card.manaCost;
+    final updatedGrave = List<BoardUnitEntity>.from(playerState.graveyard);
+
+    final updatedLanes = List<BoardLaneEntity>.from(state.lanes);
+    final lane = updatedLanes[targetLaneIndex];
+    final logs = <String>[];
+    logs.add('[Spell] ${player.name.toUpperCase()} cast "${card.name}" on Lane $targetLaneIndex.');
+
+    final opponent = (player == PlayerId.p1) ? PlayerId.p2 : PlayerId.p1;
+    final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
+
+    var laneSlotP1 = lane.p1Slot;
+    var laneSlotP2 = lane.p2Slot;
+
+    switch (card.effectType) {
+      case SpellEffectType.grantDef:
+        final alliedSlot = (player == PlayerId.p1) ? laneSlotP1 : laneSlotP2;
+        final occupant = alliedSlot.occupant;
+        if (occupant != null) {
+          final missingDef = occupant.maxDef - occupant.currentDef;
+          final heal = min(missingDef, card.effectValue);
+          final buffed = occupant.copyWith(currentDef: occupant.currentDef + heal);
+          if (player == PlayerId.p1) {
+            laneSlotP1 = laneSlotP1.copyWith(occupant: buffed);
+          } else {
+            laneSlotP2 = laneSlotP2.copyWith(occupant: buffed);
+          }
+          logs.add('[Spell Effect] "${occupant.name}" restored +$heal DEF (now ${buffed.currentDef}/${occupant.maxDef}).');
+        }
+        break;
+
+      case SpellEffectType.grantAtk:
+        final alliedSlot = (player == PlayerId.p1) ? laneSlotP1 : laneSlotP2;
+        final occupant = alliedSlot.occupant;
+        if (occupant != null) {
+          final buffed = occupant.copyWith(currentAtk: occupant.currentAtk + card.effectValue);
+          if (player == PlayerId.p1) {
+            laneSlotP1 = laneSlotP1.copyWith(occupant: buffed);
+          } else {
+            laneSlotP2 = laneSlotP2.copyWith(occupant: buffed);
+          }
+          logs.add('[Spell Effect] "${occupant.name}" gained +${card.effectValue} ATK (now ${buffed.baseAtk}).');
+        }
+        break;
+
+      case SpellEffectType.directDamage:
+        final enemySlot = (player == PlayerId.p1) ? laneSlotP2 : laneSlotP1;
+        final occupant = enemySlot.occupant;
+        if (occupant != null) {
+          final newDef = occupant.currentDef - card.effectValue;
+          if (newDef <= 0) {
+            logs.add('[Spell Effect] Direct damage ${card.effectValue} destroyed enemy unit "${occupant.name}".');
+            final oppState = updatedPlayers[opponent]!;
+            updatedPlayers[opponent] = oppState.copyWith(
+              graveyard: [...oppState.graveyard, occupant],
+            );
+            if (opponent == PlayerId.p1) {
+              laneSlotP1 = laneSlotP1.copyWith(clearOccupant: true);
+            } else {
+              laneSlotP2 = laneSlotP2.copyWith(clearOccupant: true);
+            }
+          } else {
+            final damaged = occupant.copyWith(currentDef: newDef);
+            if (opponent == PlayerId.p1) {
+              laneSlotP1 = laneSlotP1.copyWith(occupant: damaged);
+            } else {
+              laneSlotP2 = laneSlotP2.copyWith(occupant: damaged);
+            }
+            logs.add('[Spell Effect] Direct damage ${card.effectValue} hit enemy unit "${occupant.name}" (DEF: $newDef/${occupant.baseDef}).');
+          }
+        }
+        break;
+
+      case SpellEffectType.repairBuilding:
+        final alliedSlot = (player == PlayerId.p1) ? laneSlotP1 : laneSlotP2;
+        final building = alliedSlot.building;
+        if (building != null) {
+          final newHp = min(building.maxHp, building.currentHp + card.effectValue);
+          final repaired = building.copyWith(currentHp: newHp);
+          if (player == PlayerId.p1) {
+            laneSlotP1 = laneSlotP1.copyWith(building: repaired);
+          } else {
+            laneSlotP2 = laneSlotP2.copyWith(building: repaired);
+          }
+          logs.add('[Spell Effect] Building "${building.name}" repaired for +${card.effectValue} HP (now $newHp/${building.maxHp}).');
+        }
+        break;
+    }
+
+    updatedLanes[targetLaneIndex] = lane.copyWith(p1Slot: laneSlotP1, p2Slot: laneSlotP2);
+    updatedPlayers[player] = playerState.copyWith(
+      hand: updatedHand,
+      currentMana: updatedMana,
+      graveyard: updatedGrave,
+    );
+
+    return state.copyWith(
+      lanes: updatedLanes,
+      players: updatedPlayers,
+      logs: [...state.logs, ...logs],
+    );
+  }
+
   GameState _activateFloop(GameState state, PlayerId player, int laneIndex) {
     final updatedLanes = List<BoardLaneEntity>.from(state.lanes);
     final lane = updatedLanes[laneIndex];
     final currentSlot = lane.getSlot(player);
     final unit = currentSlot.occupant;
-    if (unit != null) {
-      updatedLanes[laneIndex] = lane.copyWithSlot(
-        player,
-        currentSlot.copyWith(occupant: unit.copyWith(hasFlooped: true)),
-      );
+    if (unit == null) return state;
+    if (currentSlot.hasFloopedThisRound) return state;
+
+    final playerState = state.players[player]!;
+    final floop = unit.floop;
+    final manaCost = floop?.manaCost ?? 0;
+    if (playerState.currentMana < manaCost) return state;
+
+    final updatedMana = playerState.currentMana - manaCost;
+    final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
+    updatedPlayers[player] = playerState.copyWith(currentMana: updatedMana);
+
+    final logs = <String>[];
+    logs.add('[Floop] ${player.name.toUpperCase()} activated Floop "${floop?.name ?? "Basic Floop"}" in Lane $laneIndex.');
+
+    BoardUnitEntity updatedUnit = unit.copyWith(hasFlooped: true);
+    final opponent = (player == PlayerId.p1) ? PlayerId.p2 : PlayerId.p1;
+    var oppPlayerState = updatedPlayers[opponent]!;
+
+    var laneSlotP1 = lane.p1Slot;
+    var laneSlotP2 = lane.p2Slot;
+
+    if (floop != null) {
+      switch (floop.effectType) {
+        case FloopEffectType.buffAtk:
+          updatedUnit = updatedUnit.copyWith(currentAtk: updatedUnit.currentAtk + floop.effectValue);
+          logs.add('[Floop Effect] "${updatedUnit.name}" gained +${floop.effectValue} ATK (now ${updatedUnit.baseAtk}).');
+          break;
+
+        case FloopEffectType.restoreDef:
+          final missingDef = updatedUnit.baseDef - updatedUnit.currentDef;
+          final heal = min(missingDef, floop.effectValue);
+          if (heal > 0) {
+            updatedUnit = updatedUnit.copyWith(currentDef: updatedUnit.currentDef + heal);
+            logs.add('[Floop Effect] "${updatedUnit.name}" restored +$heal DEF (now ${updatedUnit.currentDef}/${updatedUnit.baseDef}).');
+          }
+          break;
+
+        case FloopEffectType.debuffEnemyAtk:
+          final oppSlot = lane.getSlot(opponent);
+          final oppOccupant = oppSlot.occupant;
+          if (oppOccupant != null) {
+            final newAtk = max(0, oppOccupant.baseAtk - floop.effectValue);
+            final debuffed = oppOccupant.copyWith(currentAtk: newAtk);
+            if (opponent == PlayerId.p1) {
+              laneSlotP1 = laneSlotP1.copyWith(occupant: debuffed);
+            } else {
+              laneSlotP2 = laneSlotP2.copyWith(occupant: debuffed);
+            }
+            logs.add('[Floop Effect] Enemy "${oppOccupant.name}" debuffed by -${floop.effectValue} ATK (now $newAtk).');
+          }
+          break;
+
+        case FloopEffectType.directDamage:
+          final oppSlot = lane.getSlot(opponent);
+          final oppOccupant = oppSlot.occupant;
+          final oppBuilding = oppSlot.building;
+
+          if (oppOccupant != null) {
+            final dmg = floop.effectValue;
+            if (dmg >= oppOccupant.currentDef) {
+              final overflow = dmg - oppOccupant.currentDef;
+              logs.add('[Floop Effect] Direct damage $dmg destroyed enemy unit "${oppOccupant.name}" (Overflow: $overflow).');
+              final oppGrave = [...oppPlayerState.graveyard, oppOccupant];
+              oppPlayerState = oppPlayerState.copyWith(graveyard: oppGrave);
+
+              if (opponent == PlayerId.p1) {
+                laneSlotP1 = laneSlotP1.copyWith(clearOccupant: true);
+              } else {
+                laneSlotP2 = laneSlotP2.copyWith(clearOccupant: true);
+              }
+
+              if (overflow > 0) {
+                if (oppBuilding != null) {
+                  final actualBldgDmg = max(0, overflow - oppBuilding.armorReduction);
+                  if (actualBldgDmg >= oppBuilding.currentHp) {
+                    final residual = actualBldgDmg - oppBuilding.currentHp;
+                    if (opponent == PlayerId.p1) {
+                      laneSlotP1 = laneSlotP1.copyWith(clearBuilding: true);
+                    } else {
+                      laneSlotP2 = laneSlotP2.copyWith(clearBuilding: true);
+                    }
+                    final newHp = oppPlayerState.heroHp - residual;
+                    oppPlayerState = oppPlayerState.copyWith(heroHp: newHp);
+                    logs.add('[Floop Effect] Overflow destroyed building "${oppBuilding.name}". Residual $residual dealt to Hero (HP: $newHp).');
+                  } else {
+                    final newBldgHp = oppBuilding.currentHp - actualBldgDmg;
+                    final updatedBldg = oppBuilding.copyWith(currentHp: newBldgHp);
+                    if (opponent == PlayerId.p1) {
+                      laneSlotP1 = laneSlotP1.copyWith(building: updatedBldg);
+                    } else {
+                      laneSlotP2 = laneSlotP2.copyWith(building: updatedBldg);
+                    }
+                  }
+                } else {
+                  final newHp = oppPlayerState.heroHp - overflow;
+                  oppPlayerState = oppPlayerState.copyWith(heroHp: newHp);
+                  logs.add('[Floop Effect] Residual overflow $overflow dealt to enemy Hero (HP: $newHp).');
+                }
+              }
+            } else {
+              final newDef = oppOccupant.currentDef - dmg;
+              final damaged = oppOccupant.copyWith(currentDef: newDef);
+              if (opponent == PlayerId.p1) {
+                laneSlotP1 = laneSlotP1.copyWith(occupant: damaged);
+              } else {
+                laneSlotP2 = laneSlotP2.copyWith(occupant: damaged);
+              }
+              logs.add('[Floop Effect] Direct damage $dmg hit enemy unit "${oppOccupant.name}" (DEF: $newDef/${oppOccupant.baseDef}).');
+            }
+          } else if (oppBuilding != null) {
+            final actualBldgDmg = max(0, floop.effectValue - oppBuilding.armorReduction);
+            if (actualBldgDmg >= oppBuilding.currentHp) {
+              final residual = actualBldgDmg - oppBuilding.currentHp;
+              if (opponent == PlayerId.p1) {
+                laneSlotP1 = laneSlotP1.copyWith(clearBuilding: true);
+              } else {
+                laneSlotP2 = laneSlotP2.copyWith(clearBuilding: true);
+              }
+              final newHp = oppPlayerState.heroHp - residual;
+              oppPlayerState = oppPlayerState.copyWith(heroHp: newHp);
+              logs.add('[Floop Effect] Floop direct damage destroyed building "${oppBuilding.name}". Residual $residual dealt to Hero (HP: $newHp).');
+            } else {
+              final newBldgHp = oppBuilding.currentHp - actualBldgDmg;
+              final updatedBldg = oppBuilding.copyWith(currentHp: newBldgHp);
+              if (opponent == PlayerId.p1) {
+                laneSlotP1 = laneSlotP1.copyWith(building: updatedBldg);
+              } else {
+                laneSlotP2 = laneSlotP2.copyWith(building: updatedBldg);
+              }
+            }
+          } else {
+            final newHp = oppPlayerState.heroHp - floop.effectValue;
+            oppPlayerState = oppPlayerState.copyWith(heroHp: newHp);
+            logs.add('[Floop Effect] Floop direct strike dealt ${floop.effectValue} to enemy Hero (HP: $newHp).');
+          }
+          break;
+      }
     }
+
+    updatedPlayers[opponent] = oppPlayerState;
+
+    if (player == PlayerId.p1) {
+      laneSlotP1 = laneSlotP1.copyWith(occupant: updatedUnit, hasFloopedThisRound: true);
+    } else {
+      laneSlotP2 = laneSlotP2.copyWith(occupant: updatedUnit, hasFloopedThisRound: true);
+    }
+
+    updatedLanes[laneIndex] = lane.copyWith(p1Slot: laneSlotP1, p2Slot: laneSlotP2);
+
+    PlayerId? winner = state.winner;
+    TurnPhase phase = state.phase;
+    if (oppPlayerState.heroHp <= 0 && winner == null) {
+      winner = player;
+      phase = TurnPhase.gameOver;
+      logs.add('[Terminal] Opposing hero perished to Floop ability! Winner: ${player.name.toUpperCase()}.');
+    }
+
     return state.copyWith(
       lanes: updatedLanes,
-      logs: [
-        ...state.logs,
-        '[Floop] ${player.name.toUpperCase()} activated Floop in Lane $laneIndex.',
-      ],
+      players: updatedPlayers,
+      winner: winner,
+      phase: phase,
+      logs: [...state.logs, ...logs],
     );
   }
 
@@ -739,47 +1095,36 @@ class CombatEngine {
     final maxMana = newRoundNumber > 10 ? 10 : newRoundNumber;
 
     final updatedPlayers = Map<PlayerId, PlayerStateEntity>.from(state.players);
-    final roundLogs = <String>[
-      '[Round $newRoundNumber] Round start. Mana pool set to $maxMana. Initiative player: ${state.initiativePlayer.name.toUpperCase()}.'
-    ];
-
-    var p1Hp = state.p1.heroHp;
-    var p2Hp = state.p2.heroHp;
-
     for (final pid in PlayerId.values) {
       final p = updatedPlayers[pid]!;
-      final newHand = List<CombatCard>.from(p.hand);
-      final newDeck = List<CombatCard>.from(p.deck);
-
-      if (newDeck.isNotEmpty) {
-        final drawn = newDeck.removeAt(0);
-        newHand.add(drawn);
-        roundLogs.add('[Round $newRoundNumber] ${pid.name.toUpperCase()} drew "${drawn.name}". Deck remaining: ${newDeck.length}.');
-      } else {
-        if (pid == PlayerId.p1) {
-          p1Hp -= 5;
-        } else {
-          p2Hp -= 5;
-        }
-        roundLogs.add('[Round $newRoundNumber] ${pid.name.toUpperCase()} deck empty! Suffered -5 HP fatigue penalty (HP: ${pid == PlayerId.p1 ? p1Hp : p2Hp}).');
-      }
-
       updatedPlayers[pid] = p.copyWith(
         currentMana: maxMana,
         maxMana: maxMana,
-        hand: newHand,
-        deck: newDeck,
-        heroHp: pid == PlayerId.p1 ? p1Hp : p2Hp,
       );
     }
 
+    var currentState = state.copyWith(
+      roundNumber: newRoundNumber,
+      players: updatedPlayers,
+      logs: [
+        ...state.logs,
+        '[Round $newRoundNumber] Round start. Mana pool set to $maxMana. Initiative player: ${state.initiativePlayer.name.toUpperCase()}.',
+      ],
+    );
+
+    // Draw cards with 7-card ceiling & overdraw penalty
+    for (final pid in PlayerId.values) {
+      currentState = drawCard(currentState, pid);
+    }
+
     // Lane occupants: reset floop & execute Round Start Repair hook
-    final updatedLanes = state.lanes.map((lane) {
+    final updatedLanes = currentState.lanes.map((lane) {
       var p1o = lane.p1Slot.occupant;
       var p2o = lane.p2Slot.occupant;
       final p1b = lane.p1Slot.building;
       final p2b = lane.p2Slot.building;
 
+      final roundLogs = <String>[];
       if (p1o != null) {
         p1o = p1o.copyWith(hasFlooped: false);
         if (p1b != null && p1b.effectType == BuildingEffectType.roundStartRepair) {
@@ -805,42 +1150,29 @@ class CombatEngine {
       }
 
       return lane.copyWith(
-        p1Slot: lane.p1Slot.copyWith(occupant: p1o),
-        p2Slot: lane.p2Slot.copyWith(occupant: p2o),
+        p1Slot: lane.p1Slot.copyWith(
+          occupant: p1o,
+          hasFloopedThisRound: false,
+        ),
+        p2Slot: lane.p2Slot.copyWith(
+          occupant: p2o,
+          hasFloopedThisRound: false,
+        ),
       );
     }).toList();
 
-    PlayerId? winner = state.winner;
-    TurnPhase phase = (state.initiativePlayer == PlayerId.p1) ? TurnPhase.p1Turn : TurnPhase.p2Turn;
-
-    if (winner == null) {
-      if (p1Hp <= 0 && p2Hp <= 0) {
-        winner = null;
-        phase = TurnPhase.gameOver;
-        roundLogs.add('[Terminal] Both heroes perished to fatigue. Draw.');
-      } else if (p1Hp <= 0) {
-        winner = PlayerId.p2;
-        phase = TurnPhase.gameOver;
-        roundLogs.add('[Terminal] P1 perished to fatigue. Winner: P2.');
-      } else if (p2Hp <= 0) {
-        winner = PlayerId.p1;
-        phase = TurnPhase.gameOver;
-        roundLogs.add('[Terminal] P2 perished to fatigue. Winner: P1.');
-      }
-    } else {
+    PlayerId? winner = currentState.winner;
+    TurnPhase phase = (currentState.initiativePlayer == PlayerId.p1) ? TurnPhase.p1Turn : TurnPhase.p2Turn;
+    if (winner != null) {
       phase = TurnPhase.gameOver;
     }
 
-    return state.copyWith(
-      roundNumber: newRoundNumber,
+    return currentState.copyWith(
       phase: phase,
-      activePlayer: state.initiativePlayer,
-      players: updatedPlayers,
+      activePlayer: currentState.initiativePlayer,
       lanes: updatedLanes,
       p1UnitDestroyedInP2Turn: false,
       winner: winner,
-      clearWinner: winner == null && phase == TurnPhase.gameOver,
-      logs: [...state.logs, ...roundLogs],
     );
   }
 

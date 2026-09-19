@@ -2,18 +2,20 @@
 // [MODULE_NAME]: combat_engine_controller.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Presentation / Controllers
-// [INTENT]: Manages the combat engine state and acts as Riverpod controller for the arena view with independent P1/P2 selection states and 20-card tactical deck support.
-// [DEPENDENCIES]: package:flutter_riverpod/flutter_riverpod.dart, ../../domain/services/combat_engine.dart, ../../domain/entities/combat/game_state.dart, ../../domain/entities/combat/game_action.dart, ../../domain/entities/combat/combat_enums.dart, ../../domain/entities/combat/combat_card.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/axie_card_entity.dart
+// [INTENT]: Manages combat engine state, selective mulligan tracking, canonical 20-card decks, tactical spells, and floop activations.
+// [DEPENDENCIES]: package:flutter_riverpod/flutter_riverpod.dart, ../../domain/services/combat_engine.dart, ../../domain/services/axie_card_factory.dart, ../../domain/entities/combat/game_state.dart, ../../domain/entities/combat/game_action.dart, ../../domain/entities/combat/combat_enums.dart, ../../domain/entities/combat/combat_card.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/combat/spell_card_entity.dart, ../../domain/entities/axie_card_entity.dart
 // [ARCHITECTURE]: Riverpod Notifier Controller
 // ===============================================================================
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/services/combat_engine.dart';
+import '../../domain/services/axie_card_factory.dart';
 import '../../domain/entities/combat/game_state.dart';
 import '../../domain/entities/combat/game_action.dart';
 import '../../domain/entities/combat/combat_enums.dart';
 import '../../domain/entities/combat/combat_card.dart';
 import '../../domain/entities/combat/building_card_entity.dart';
+import '../../domain/entities/combat/spell_card_entity.dart';
 import '../../domain/entities/axie_card_entity.dart';
 
 final combatEngineProvider = NotifierProvider<CombatEngineController, GameState>(CombatEngineController.new);
@@ -26,6 +28,10 @@ class CombatEngineController extends Notifier<GameState> {
   int selectedP1Lane = 0;
   String? selectedP2CardId;
   int selectedP2Lane = 0;
+
+  // Selective Mulligan Tracking State
+  final Set<String> p1MulliganSelection = {};
+  final Set<String> p2MulliganSelection = {};
 
   // Legacy / Fallback Active Target
   PlayerId selectedPlayer = PlayerId.p1;
@@ -53,51 +59,44 @@ class CombatEngineController extends Notifier<GameState> {
     selectedP2CardId = null;
     selectedP2Lane = 0;
     selectedPlayer = PlayerId.p1;
+    p1MulliganSelection.clear();
+    p2MulliganSelection.clear();
 
     return _engine.initializeGame(
-      p1Deck: _generateTestDeck('p1'),
-      p2Deck: _generateTestDeck('p2'),
+      p1Deck: AxieCardFactory.createCanonicalDeck('p1'),
+      p2Deck: AxieCardFactory.createCanonicalDeck('p2'),
       p1Landscapes: defaultP1Landscapes,
       p2Landscapes: defaultP2Landscapes,
     );
   }
 
-  List<AxieCardEntity> _generateAxieCards(int count, String prefix) {
-    final classes = [
-      'beast',
-      'aquatic',
-      'plant',
-      'bug',
-      'bird',
-      'reptile',
-    ];
-    return List.generate(count, (i) {
-      final className = classes[i % classes.length];
-      return AxieCardEntity.fromGraphQL({
-        'id': '${prefix}_card_$i',
-        'name': '${prefix.toUpperCase()} ${className.toUpperCase()} $i',
-        'class': className,
-        'level': (i % 3) * 10,
-        'parts': [
-          {'type': 'mouth', 'name': 'Nut Cracker'},
-          {'type': 'tail', 'name': 'Nut Throw'},
-          {'type': 'horn', 'name': 'Dual Blade'},
-          {'type': 'back', 'name': 'Ronin'}
-        ],
-      });
-    });
+  void toggleMulliganCard(PlayerId player, String cardId) {
+    final set = player == PlayerId.p1 ? p1MulliganSelection : p2MulliganSelection;
+    if (set.contains(cardId)) {
+      set.remove(cardId);
+    } else {
+      set.add(cardId);
+    }
+    state = state.copyWith();
   }
 
-  List<CombatCard> _generateTestDeck(String prefix) {
-    final axies = _generateAxieCards(15, prefix);
-    final buildings = [
-      BuildingCardEntity.attackTotem(id: '${prefix}_atk_totem_1'),
-      BuildingCardEntity.attackTotem(id: '${prefix}_atk_totem_2'),
-      BuildingCardEntity.defenseBarricade(id: '${prefix}_def_barricade_1'),
-      BuildingCardEntity.defenseBarricade(id: '${prefix}_def_barricade_2'),
-      BuildingCardEntity.vitalityShrine(id: '${prefix}_vitality_shrine_1'),
-    ];
-    return [...axies, ...buildings];
+  void confirmMulligan(PlayerId player) {
+    final selectedIds = (player == PlayerId.p1 ? p1MulliganSelection : p2MulliganSelection).toList();
+    mulliganCards(player, selectedIds);
+    if (player == PlayerId.p1) {
+      p1MulliganSelection.clear();
+    } else {
+      p2MulliganSelection.clear();
+    }
+  }
+
+  void keepEntireHand(PlayerId player) {
+    mulliganCards(player, const []);
+    if (player == PlayerId.p1) {
+      p1MulliganSelection.clear();
+    } else {
+      p2MulliganSelection.clear();
+    }
   }
 
   void selectP1Card(String? id) {
@@ -178,9 +177,11 @@ class CombatEngineController extends Notifier<GameState> {
     selectedP2CardId = null;
     selectedP2Lane = 0;
     selectedPlayer = PlayerId.p1;
+    p1MulliganSelection.clear();
+    p2MulliganSelection.clear();
     state = _engine.initializeGame(
-      p1Deck: p1Deck ?? _generateTestDeck('p1'),
-      p2Deck: p2Deck ?? _generateTestDeck('p2'),
+      p1Deck: p1Deck ?? AxieCardFactory.createCanonicalDeck('p1'),
+      p2Deck: p2Deck ?? AxieCardFactory.createCanonicalDeck('p2'),
       p1Landscapes: p1Landscapes ?? defaultP1Landscapes,
       p2Landscapes: p2Landscapes ?? defaultP2Landscapes,
     );
@@ -226,7 +227,7 @@ class CombatEngineController extends Notifier<GameState> {
       return (canDeploy: false, reason: 'Mulligan in progress. Complete mulligan first.');
     }
     if (state.phase == TurnPhase.clashPhase || state.phase == TurnPhase.roundEnd || state.phase == TurnPhase.roundStart) {
-      return (canDeploy: false, reason: 'Cannot summon units/buildings during ${state.phase.name}.');
+      return (canDeploy: false, reason: 'Cannot summon units/buildings/spells during ${state.phase.name}.');
     }
 
     if (state.phase == TurnPhase.p1Turn && targetPlayer != PlayerId.p1) {
@@ -285,6 +286,20 @@ class CombatEngineController extends Notifier<GameState> {
       if (slot.building != null) {
         return (canDeploy: false, reason: 'Lane $lane already has building ${slot.building!.name}.');
       }
+    } else if (card is SpellCardEntity) {
+      if (state.phase == TurnPhase.p1ReactiveWindow) {
+        return (canDeploy: false, reason: 'Cannot cast spells during reactive window.');
+      }
+      if (card.targetType == SpellTargetType.alliedUnit) {
+        if (state.lanes[lane].getSlot(targetPlayer).occupant == null) {
+          return (canDeploy: false, reason: 'Target lane $lane has no allied unit.');
+        }
+      } else if (card.targetType == SpellTargetType.enemyUnit) {
+        if (state.lanes[lane].getOpposingSlot(targetPlayer).occupant == null) {
+          return (canDeploy: false, reason: 'Target lane $lane has no enemy unit.');
+        }
+      }
+      return (canDeploy: true, reason: 'Ready to cast ${card.name}.');
     }
 
     return (canDeploy: true, reason: 'Ready to deploy.');
@@ -308,6 +323,12 @@ class CombatEngineController extends Notifier<GameState> {
       }
     } else if (card is BuildingCardEntity) {
       dispatchAction(PlayBuildingAction(targetPlayer, lane, card.id));
+    } else if (card is SpellCardEntity) {
+      dispatchAction(PlaySpellAction(
+        player: targetPlayer,
+        cardInstanceId: card.id,
+        targetLaneIndex: lane,
+      ));
     }
 
     if (targetPlayer == PlayerId.p1) {
@@ -315,6 +336,14 @@ class CombatEngineController extends Notifier<GameState> {
     } else {
       selectedP2CardId = null;
     }
+  }
+
+  void castSpell(PlayerId player, String cardId, int laneIndex) {
+    dispatchAction(PlaySpellAction(
+      player: player,
+      cardInstanceId: cardId,
+      targetLaneIndex: laneIndex,
+    ));
   }
 
   void deployUnit(PlayerId player, AxieCardEntity card, int laneIndex) {
@@ -354,9 +383,11 @@ class CombatEngineController extends Notifier<GameState> {
     selectedP2CardId = null;
     selectedP2Lane = 0;
     selectedPlayer = PlayerId.p1;
+    p1MulliganSelection.clear();
+    p2MulliganSelection.clear();
     state = _engine.initializeGame(
-      p1Deck: _generateTestDeck('p1'),
-      p2Deck: _generateTestDeck('p2'),
+      p1Deck: AxieCardFactory.createCanonicalDeck('p1'),
+      p2Deck: AxieCardFactory.createCanonicalDeck('p2'),
       p1Landscapes: defaultP1Landscapes,
       p2Landscapes: defaultP2Landscapes,
     );

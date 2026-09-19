@@ -2,7 +2,7 @@
 // [MODULE_NAME]: game_action.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: Sealed classes for dispatched game actions including units, buildings, and tile drafting
+// [INTENT]: Sealed classes for dispatched game actions including units, buildings, spells, and tile drafting
 // [DEPENDENCIES]: combat_enums.dart, axie_card_entity.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern / Sealed Hierarchy
 // ===============================================================================
@@ -28,6 +28,20 @@ class PlayBuildingAction extends GameAction {
   final String cardInstanceId;
 
   const PlayBuildingAction(this.player, this.laneIndex, this.cardInstanceId);
+}
+
+class PlaySpellAction extends GameAction {
+  final PlayerId player;
+  final String cardInstanceId;
+  final int targetLaneIndex;
+  final PlayerId? targetPlayer;
+
+  const PlaySpellAction({
+    required this.player,
+    required this.cardInstanceId,
+    required this.targetLaneIndex,
+    this.targetPlayer,
+  });
 }
 
 class ActivateFloopAction extends GameAction {
