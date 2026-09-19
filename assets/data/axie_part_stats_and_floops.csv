@@ -1,0 +1,205 @@
+Part_Name,Slot,Class,GraphQL_ID,Axie_Amount
+Little Branch,Horn,Beast,horn-little-branch,158510
+Imp,Horn,Beast,horn-imp,1129436
+Merry,Horn,Beast,horn-merry,66060
+Pocky,Horn,Beast,horn-pocky,113334
+Dual Blade,Horn,Beast,horn-dual-blade,470999
+Arco,Horn,Beast,horn-arco,203383
+Babylonia,Horn,Aquatic,horn-babylonia,233591
+Teal Shell,Horn,Aquatic,horn-teal-shell,89891
+Clamshell,Horn,Aquatic,horn-clamshell,206446
+Anemone,Horn,Aquatic,horn-anemone,504579
+Oranda,Horn,Aquatic,horn-oranda,586695
+Shoal Star,Horn,Aquatic,horn-shoal-star,1174119
+Bamboo,Horn,Plant,horn-bamboo,0
+Beech,Horn,Plant,horn-beech,407443
+Rose Bud,Horn,Plant,horn-rose-bud,597997
+Strawberry Shortcake,Horn,Plant,horn-strawberry-shortcake,79347
+Cactus,Horn,Plant,horn-cactus,1288702
+Watermelon,Horn,Plant,horn-watermelon,94266
+Eggshell,Horn,Bird,horn-eggshell,714522
+Cuckoo,Horn,Bird,horn-cuckoo,135214
+Trump,Horn,Bird,horn-trump,100780
+Kestrel,Horn,Bird,horn-kestrel,297534
+Wing Horn,Horn,Bird,horn-wing-horn,224708
+Feather Spear,Horn,Bird,horn-feather-spear,59326
+Vall Ein,Horn,Bug,horn-vall-ein,0
+Antenna,Horn,Bug,horn-antenna,114633
+Caterpillar,Horn,Bug,horn-caterpillar,0
+Pliers,Horn,Bug,horn-pliers,79794
+Parasite,Horn,Bug,horn-parasite,225236
+Leaf Bug,Horn,Bug,horn-leaf-bug,821651
+Unko,Horn,Reptile,horn-unko,62286
+Scaly Spear,Horn,Reptile,horn-scaly-spear,130225
+Cerastes,Horn,Reptile,horn-cerastes,249600
+Scaly Spoon,Horn,Reptile,horn-scaly-spoon,217047
+Incisor,Horn,Reptile,horn-incisor,234831
+Bumpy,Horn,Reptile,horn-bumpy,87194
+Ronin,Back,Beast,back-ronin,1294801
+Hero,Back,Beast,back-hero,231347
+Jaguar,Back,Beast,back-jaguar,123417
+Risky Beast,Back,Beast,back-risky-beast,212910
+Timber,Back,Beast,back-timber,74885
+Furball,Back,Beast,back-furball,117236
+Hermit,Back,Aquatic,back-hermit,87436
+Blue Moon,Back,Aquatic,back-blue-moon,148257
+Goldfish,Back,Aquatic,back-goldfish,1796797
+Sponge,Back,Aquatic,back-sponge,121184
+Anemone,Back,Aquatic,back-anemone,501953
+Perch,Back,Aquatic,back-perch,161754
+Turnip,Back,Plant,back-turnip,84247
+Shiitake,Back,Plant,back-shiitake,170487
+Bidens,Back,Plant,back-bidens,327302
+Watering Can,Back,Plant,back-watering-can,250822
+Mint,Back,Plant,back-mint,94616
+Pumpkin,Back,Plant,back-pumpkin,2292667
+Pigeon Post,Back,Bird,back-pigeon-post,560215
+Raven,Back,Bird,back-raven,248306
+Cupid,Back,Bird,back-cupid,195799
+Kingfisher,Back,Bird,back-kingfisher,75376
+Tri Feather,Back,Bird,back-tri-feather,125610
+Balloon,Back,Bird,back-balloon,98029
+Snail Shell,Back,Bug,back-snail-shell,882704
+Garish Worm,Back,Bug,back-garish-worm,371270
+Buzz Buzz,Back,Bug,back-buzz-buzz,74943
+Sandal,Back,Bug,back-sandal,164528
+Scarab,Back,Bug,back-scarab,145586
+Spiky Wing,Back,Bug,back-spiky-wing,65544
+Bone Sail,Back,Reptile,back-bone-sail,154072
+Tri Spikes,Back,Reptile,back-tri-spikes,288031
+Green Thorns,Back,Reptile,back-green-thorns,236401
+Indian Star,Back,Reptile,back-indian-star,168041
+Red Ear,Back,Reptile,back-red-ear,98062
+Croc,Back,Reptile,back-croc,74206
+Nutcracker,Mouth,Beast,mouth-nut-cracker,1160532
+Axie Kiss,Mouth,Beast,mouth-axie-kiss,257763
+Goda,Mouth,Beast,mouth-goda,454034
+Confident,Mouth,Beast,mouth-confident,166039
+Lam,Mouth,Aquatic,mouth-lam,598386
+Risky Fish,Mouth,Aquatic,mouth-risky-fish,1792149
+Piranha,Mouth,Aquatic,mouth-piranha,349329
+Catfish,Mouth,Aquatic,mouth-catfish,154857
+Serious,Mouth,Plant,mouth-serious,2533158
+Zigzag,Mouth,Plant,mouth-zigzag,484577
+Herbivore,Mouth,Plant,mouth-herbivore,152808
+Silence Whisper,Mouth,Plant,mouth-silence-whisper,158914
+Doubletalk,Mouth,Bird,mouth-doubletalk,289396
+Peace Maker,Mouth,Bird,mouth-peace-maker,179153
+Little Owl,Mouth,Bird,mouth-little-owl,645725
+Hungry Bird,Mouth,Bird,mouth-hungry-bird,183014
+Mosquito,Mouth,Bug,mouth-mosquito,104108
+Cute Bunny,Mouth,Bug,mouth-cute-bunny,204479
+Square Teeth,Mouth,Bug,mouth-square-teeth,112073
+Pincer,Mouth,Bug,mouth-pincer,242821
+Toothless Bite,Mouth,Reptile,mouth-toothless-bite,238291
+Kotaro,Mouth,Reptile,mouth-kotaro,260396
+Razor Bite,Mouth,Reptile,mouth-razor-bite,115975
+Tiny Turtle,Mouth,Reptile,mouth-tiny-turtle,1331344
+Cottontail,Tail,Beast,tail-cottontail,409866
+Rice,Tail,Beast,tail-rice,152226
+Shiva,Tail,Beast,tail-shiva,0
+Gerbil,Tail,Beast,tail-gerbil,61389
+Hare,Tail,Beast,tail-hare,342954
+Nutcracker,Tail,Beast,tail-nut-cracker,1050623
+Koi,Tail,Aquatic,tail-koi,1003247
+Nimo,Tail,Aquatic,tail-nimo,1517471
+Tadpole,Tail,Aquatic,tail-tadpole,87367
+Ranchu,Tail,Aquatic,tail-ranchu,81298
+Navaga,Tail,Aquatic,tail-navaga,232757
+Shrimp,Tail,Aquatic,tail-shrimp,186927
+Carrot,Tail,Plant,tail-carrot,1642539
+Cattail,Tail,Plant,tail-cattail,250463
+Hatsune,Tail,Plant,tail-hatsune,149189
+Yam,Tail,Plant,tail-yam,554410
+Potato Leaf,Tail,Plant,tail-potato-leaf,106811
+Hot Butt,Tail,Plant,tail-hot-butt,695552
+Swallow,Tail,Bird,tail-swallow,106772
+Feather Fan,Tail,Bird,tail-feather-fan,71811
+The Last One,Tail,Bird,tail-the-last-one,277904
+Cloud,Tail,Bird,tail-cloud,57040
+Granma's Fan,Tail,Bird,tail-granmas-fan,214066
+Post Fight,Tail,Bird,tail-post-fight,403254
+Ant,Tail,Bug,tail-ant,68209
+Twin Needle,Tail,Bug,tail-twin-needle,0
+Fish Snack,Tail,Bug,tail-fish-snack,195417
+Gravel Ant,Tail,Bug,tail-gravel-ant,140582
+Pupae,Tail,Bug,tail-pupae,50277
+Thorny Caterpillar,Tail,Bug,tail-thorny-caterpillar,887090
+Wall Gecko,Tail,Reptile,tail-wall-gecko,119618
+Iguana,Tail,Reptile,tail-iguana,99254
+Tiny Dino,Tail,Reptile,tail-tiny-dino,240389
+Snake Jar,Tail,Reptile,tail-snake-jar,86764
+Gila,Tail,Reptile,tail-gila,75147
+Grass Snake,Tail,Reptile,tail-grass-snake,341558
+Puppy,Eyes,Beast,eyes-puppy,175494
+Calico Zee,Eyes,Beast,eyes-calico-zee,0
+Little Peas,Eyes,Beast,eyes-little-peas,241268
+Chubby,Eyes,Beast,eyes-chubby,981127
+Zeek,Eyes,Beast,eyes-zeek,0
+Snowflakes,Eyes,Beast,eyes-snowflakes,156
+Sleepless,Eyes,Aquatic,eyes-sleepless,398324
+Clear,Eyes,Aquatic,eyes-clear,1932563
+Gero,Eyes,Aquatic,eyes-gero,631582
+Telescopes,Eyes,Aquatic,eyes-telescopes,0
+Insomnia,Eyes,Aquatic,eyes-insomnia,18
+Blosson,Eyes,Aquatic,eyes-blosson,0
+Papi,Eyes,Plant,eyes-papi,1696162
+Blossom,Eyes,Plant,eyes-blossom,289717
+Cucumber Slice,Eyes,Plant,eyes-cucumber-slice,343232
+Confused,Eyes,Plant,eyes-confused,928784
+Mistletoe,Eyes,Plant,eyes-mistletoe,0
+Dreamy Papi,Eyes,Plant,eyes-dreamy-papi,23
+Mavis,Eyes,Bird,eyes-mavis,1009412
+Lucas,Eyes,Bird,eyes-lucas,247465
+Robin,Eyes,Bird,eyes-robin,231008
+Little Owl,Eyes,Bird,eyes-little-owl,248153
+Sky Mavis,Eyes,Bird,eyes-sky-mavis,7
+Crimson Gecko,Eyes,Bird,eyes-crimson-gecko,2
+Bookworm,Eyes,Bug,eyes-bookworm,169362
+Neo,Eyes,Bug,eyes-neo,215883
+Nerdy,Eyes,Bug,eyes-nerdy,161472
+Kotaro,Eyes,Bug,eyes-kotaro,172419
+Geisha,Eyes,Bug,eyes-geisha,0
+Dente,Eyes,Bug,eyes-dente,0
+Tricky,Eyes,Reptile,eyes-tricky,313946
+Topaz,Eyes,Reptile,eyes-topaz,258900
+Scar,Eyes,Reptile,eyes-scar,180910
+Kabuki,Eyes,Reptile,eyes-kabuki,1272
+Crimson Tooth,Eyes,Reptile,eyes-crimson-tooth,0
+Scarlet Frog,Eyes,Reptile,eyes-scarlet-frog,0
+Nut Cracker,Ears,Beast,ears-nut-cracker,605994
+Nyan,Ears,Beast,ears-nyan,512687
+Pointy Nyan,Ears,Beast,ears-pointy-nyan,13
+Innocent Lamb,Ears,Beast,ears-innocent-lamb,249256
+Belieber,Ears,Beast,ears-belieber,132554
+Puppy,Ears,Beast,ears-puppy,138568
+Nimo,Ears,Aquatic,ears-nimo,445032
+Tiny Fan,Ears,Aquatic,ears-tiny-fan,215131
+Bubblemaker,Ears,Aquatic,ears-bubblemaker,1174747
+Gill,Ears,Aquatic,ears-gill,581461
+Seabream,Ears,Aquatic,ears-seabream,0
+Inkling,Ears,Aquatic,ears-inkling,1087126
+Serious,Ears,Plant,ears-serious,0
+Sakura,Ears,Plant,ears-sakura,287528
+Leaves,Ears,Plant,ears-leaves,0
+Clover,Ears,Plant,ears-clover,758122
+Rosa,Ears,Plant,ears-rosa,432258
+Hollow,Ears,Plant,ears-hollow,645612
+Pink Cheek,Ears,Bird,ears-pink-cheek,268795
+Early Bird,Ears,Bird,ears-early-bird,348984
+Owl,Ears,Bird,ears-owl,392128
+Curved Spine,Ears,Bird,ears-curved-spine,227128
+Peace Maker,Ears,Bird,ears-peace-maker,372101
+Risky Bird,Ears,Bird,ears-risky-bird,136696
+Beetle Spike,Ears,Bug,ears-beetle-spike,98867
+Ear Breathing,Ears,Bug,ears-ear-breathing,168227
+Larva,Ears,Bug,ears-larva,112002
+Tassels,Ears,Bug,ears-tassels,88529
+Caterpillars,Ears,Bug,ears-caterpillars,0
+Vector,Ears,Bug,ears-vector,6
+Pogona,Ears,Reptile,ears-pogona,155746
+Frizzy,Ears,Reptile,ears-frizzy,0
+Small Frill,Ears,Reptile,ears-small-frill,182199
+Curved Spine,Ears,Reptile,ears-curved-spine,227128
+Sidebar,Ears,Reptile,ears-sidebar,0
+Swirl,Ears,Reptile,ears-swirl,102644
