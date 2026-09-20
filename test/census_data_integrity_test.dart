@@ -78,10 +78,10 @@ void main() {
           .toList();
 
       expect(lines.length, equals(289), reason: 'Must contain exactly 1 header + 288 data rows');
-      expect(lines.first, equals('permutation_mouth_tail,Axie_amount'));
+      expect(lines.first, equals('permutation_mouth_tail,Axie_amount,Permutation_Type,Permutation_class'));
     });
 
-    test('Test 4: Permutation dataset format and numeric integrity', () {
+    test('Test 4: Permutation dataset 4-column schema, uniqueness, and Pure/Mix class distribution', () {
       final lines = permStatsFile
           .readAsLinesSync()
           .where((line) => line.trim().isNotEmpty)
@@ -89,13 +89,17 @@ void main() {
 
       final dataRows = lines.sublist(1);
       final Set<String> uniqueKeys = {};
+      final Map<String, int> typeCounts = {};
+      final Map<String, int> classCounts = {};
 
       for (final row in dataRows) {
         final cols = row.split(',');
-        expect(cols.length, equals(2), reason: 'Each row must have 2 columns: permutation_mouth_tail,Axie_amount');
+        expect(cols.length, equals(4), reason: 'Each row must have 4 columns: permutation_mouth_tail,Axie_amount,Permutation_Type,Permutation_class: $row');
 
         final key = cols[0].trim();
         final amount = int.tryParse(cols[1].trim());
+        final type = cols[2].trim();
+        final permClass = cols[3].trim();
 
         expect(key.contains('__'), isTrue, reason: 'Permutation key must contain separator __: $key');
         expect(key.startsWith('mouth-'), isTrue, reason: 'Key must start with mouth slug: $key');
@@ -104,13 +108,60 @@ void main() {
         expect(amount, isNotNull, reason: 'Axie_amount must be a valid integer: $row');
         expect(amount! >= 0, isTrue, reason: 'Axie_amount must be non-negative: $amount');
 
+        expect(['Pure', 'Mix'].contains(type), isTrue, reason: 'Permutation_Type must be Pure or Mix: $type');
+
         uniqueKeys.add(key);
+        typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+        classCounts[permClass] = (classCounts[permClass] ?? 0) + 1;
       }
 
       expect(uniqueKeys.length, equals(288), reason: 'All 288 permutations must be unique');
+
+      // Distribution invariants: 144 Pure, 144 Mix
+      expect(typeCounts['Pure'], equals(144), reason: 'Must contain exactly 144 Pure permutations');
+      expect(typeCounts['Mix'], equals(144), reason: 'Must contain exactly 144 Mix permutations');
+
+      // Pure classes: 24 each
+      expect(classCounts['Beast'], equals(24), reason: 'Must contain 24 Beast permutations');
+      expect(classCounts['Aquatic'], equals(24), reason: 'Must contain 24 Aquatic permutations');
+      expect(classCounts['Plant'], equals(24), reason: 'Must contain 24 Plant permutations');
+      expect(classCounts['Bird'], equals(24), reason: 'Must contain 24 Bird permutations');
+      expect(classCounts['Bug'], equals(24), reason: 'Must contain 24 Bug permutations');
+      expect(classCounts['Reptile'], equals(24), reason: 'Must contain 24 Reptile permutations');
+
+      // Mix classes: 48 each
+      expect(classCounts['Mech'], equals(48), reason: 'Must contain 48 Mech permutations');
+      expect(classCounts['Dusk'], equals(48), reason: 'Must contain 48 Dusk permutations');
+      expect(classCounts['Dawn'], equals(48), reason: 'Must contain 48 Dawn permutations');
     });
 
-    test('Test 5: Demographic density sanity check for hyper-common parts (>1,000,000 minted)', () {
+    test('Test 5: Resolved hole validation (historical zero-count anomaly resolution)', () {
+      final lines = permStatsFile
+          .readAsLinesSync()
+          .where((line) => line.trim().isNotEmpty)
+          .toList();
+
+      final Map<String, int> permCounts = {};
+      for (final row in lines.sublist(1)) {
+        final cols = row.split(',');
+        permCounts[cols[0].trim()] = int.parse(cols[1].trim());
+      }
+
+      // Check strictly > 0 for previously zero or missing slugs
+      expect(permCounts['mouth-nut-cracker__tail-shiba'], isNotNull, reason: 'mouth-nut-cracker__tail-shiba must exist in dataset');
+      expect(permCounts['mouth-nut-cracker__tail-shiba']! > 0, isTrue, reason: 'mouth-nut-cracker__tail-shiba count must be strictly > 0');
+
+      expect(permCounts['mouth-pincer__tail-shiba'], isNotNull, reason: 'mouth-pincer__tail-shiba must exist in dataset');
+      expect(permCounts['mouth-pincer__tail-shiba']! > 0, isTrue, reason: 'mouth-pincer__tail-shiba count must be strictly > 0');
+
+      expect(permCounts['mouth-mosquito__tail-twin-tail'], isNotNull, reason: 'mouth-mosquito__tail-twin-tail must exist in dataset');
+      expect(permCounts['mouth-mosquito__tail-twin-tail']! > 0, isTrue, reason: 'mouth-mosquito__tail-twin-tail count must be strictly > 0');
+
+      expect(permCounts['mouth-pincer__tail-twin-tail'], isNotNull, reason: 'mouth-pincer__tail-twin-tail must exist in dataset');
+      expect(permCounts['mouth-pincer__tail-twin-tail']! > 0, isTrue, reason: 'mouth-pincer__tail-twin-tail count must be strictly > 0');
+    });
+
+    test('Test 6: Demographic density sanity check for hyper-common parts (>1,000,000 minted)', () {
       final lines = partStatsFile
           .readAsLinesSync()
           .where((line) => line.trim().isNotEmpty)

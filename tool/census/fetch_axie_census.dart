@@ -2,7 +2,7 @@
 // [MODULE_NAME]: fetch_axie_census.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Tool / Census
-// [INTENT]: Pure Dart CLI script querying Sky Mavis GraphQL API to extract on-chain minted population census for all 204 anatomical parts and 288 mouth-tail genetic permutations across 6 classes.
+// [INTENT]: Pure Dart CLI script querying Sky Mavis GraphQL API to extract on-chain minted population census for 204 anatomical parts and 288 mouth-tail genetic permutations across pure and hybrid classes with dynamic candidate slug resolution.
 // [DEPENDENCIES]: dart:io, dart:convert, package:http/http.dart
 // [ARCHITECTURE]: Standalone CLI Data Extraction Script
 // ===============================================================================
@@ -37,360 +37,456 @@ enum AxieClass {
   const AxieClass(this.label);
 }
 
-/// Anatomical part metadata model.
-class AxiePart {
+/// Anatomical part metadata model supporting fallback candidate slugs.
+class PartDefinition {
   final String name;
   final BodySlot slot;
   final AxieClass axieClass;
-  final String graphQLId;
+  final List<String> candidateSlugs;
 
-  const AxiePart({
+  const PartDefinition({
     required this.name,
     required this.slot,
     required this.axieClass,
-    required this.graphQLId,
+    required this.candidateSlugs,
   });
 }
 
+/// Resolved part outcome linking definition to active slug and population count.
+class ResolvedPart {
+  final PartDefinition definition;
+  final String resolvedSlug;
+  final int count;
+
+  const ResolvedPart({
+    required this.definition,
+    required this.resolvedSlug,
+    required this.count,
+  });
+}
+
+/// Genetic permutation record with classification metadata.
+class PermutationRecord {
+  final String mouthSlug;
+  final String tailSlug;
+  final String type; // 'Pure' or 'Mix'
+  final String classification; // 'Beast', 'Aquatic', 'Plant', 'Bird', 'Bug', 'Reptile', 'Mech', 'Dusk', 'Dawn'
+
+  const PermutationRecord({
+    required this.mouthSlug,
+    required this.tailSlug,
+    required this.type,
+    required this.classification,
+  });
+
+  String get key => '${mouthSlug}__$tailSlug';
+}
+
 /// Canonical catalog of all 204 physical anatomical parts in Axie Infinity.
-/// Strictly aligned to DIR_LCW_GRAPHQL_CENSUS_6_PARTS_AND_PERMUTATIONS_CYCLE_11_9.
-const List<AxiePart> kAxiePartsCatalog = [
+/// Incorporates candidate slugs for on-chain slug reconciliation.
+const List<PartDefinition> kAxiePartsCatalog = [
   // ==========================================
   // HORNS (36 parts: 6 per class * 6 classes)
   // ==========================================
   // Beast Horns (6)
-  AxiePart(name: 'Little Branch', slot: BodySlot.horn, axieClass: AxieClass.beast, graphQLId: 'horn-little-branch'),
-  AxiePart(name: 'Imp', slot: BodySlot.horn, axieClass: AxieClass.beast, graphQLId: 'horn-imp'),
-  AxiePart(name: 'Merry', slot: BodySlot.horn, axieClass: AxieClass.beast, graphQLId: 'horn-merry'),
-  AxiePart(name: 'Pocky', slot: BodySlot.horn, axieClass: AxieClass.beast, graphQLId: 'horn-pocky'),
-  AxiePart(name: 'Dual Blade', slot: BodySlot.horn, axieClass: AxieClass.beast, graphQLId: 'horn-dual-blade'),
-  AxiePart(name: 'Arco', slot: BodySlot.horn, axieClass: AxieClass.beast, graphQLId: 'horn-arco'),
+  PartDefinition(name: 'Little Branch', slot: BodySlot.horn, axieClass: AxieClass.beast, candidateSlugs: ['horn-little-branch']),
+  PartDefinition(name: 'Imp', slot: BodySlot.horn, axieClass: AxieClass.beast, candidateSlugs: ['horn-imp']),
+  PartDefinition(name: 'Merry', slot: BodySlot.horn, axieClass: AxieClass.beast, candidateSlugs: ['horn-merry']),
+  PartDefinition(name: 'Pocky', slot: BodySlot.horn, axieClass: AxieClass.beast, candidateSlugs: ['horn-pocky']),
+  PartDefinition(name: 'Dual Blade', slot: BodySlot.horn, axieClass: AxieClass.beast, candidateSlugs: ['horn-dual-blade']),
+  PartDefinition(name: 'Arco', slot: BodySlot.horn, axieClass: AxieClass.beast, candidateSlugs: ['horn-arco']),
 
   // Aquatic Horns (6)
-  AxiePart(name: 'Babylonia', slot: BodySlot.horn, axieClass: AxieClass.aquatic, graphQLId: 'horn-babylonia'),
-  AxiePart(name: 'Teal Shell', slot: BodySlot.horn, axieClass: AxieClass.aquatic, graphQLId: 'horn-teal-shell'),
-  AxiePart(name: 'Clamshell', slot: BodySlot.horn, axieClass: AxieClass.aquatic, graphQLId: 'horn-clamshell'),
-  AxiePart(name: 'Anemone', slot: BodySlot.horn, axieClass: AxieClass.aquatic, graphQLId: 'horn-anemone'),
-  AxiePart(name: 'Oranda', slot: BodySlot.horn, axieClass: AxieClass.aquatic, graphQLId: 'horn-oranda'),
-  AxiePart(name: 'Shoal Star', slot: BodySlot.horn, axieClass: AxieClass.aquatic, graphQLId: 'horn-shoal-star'),
+  PartDefinition(name: 'Babylonia', slot: BodySlot.horn, axieClass: AxieClass.aquatic, candidateSlugs: ['horn-babylonia']),
+  PartDefinition(name: 'Teal Shell', slot: BodySlot.horn, axieClass: AxieClass.aquatic, candidateSlugs: ['horn-teal-shell']),
+  PartDefinition(name: 'Clamshell', slot: BodySlot.horn, axieClass: AxieClass.aquatic, candidateSlugs: ['horn-clamshell']),
+  PartDefinition(name: 'Anemone', slot: BodySlot.horn, axieClass: AxieClass.aquatic, candidateSlugs: ['horn-anemone']),
+  PartDefinition(name: 'Oranda', slot: BodySlot.horn, axieClass: AxieClass.aquatic, candidateSlugs: ['horn-oranda']),
+  PartDefinition(name: 'Shoal Star', slot: BodySlot.horn, axieClass: AxieClass.aquatic, candidateSlugs: ['horn-shoal-star']),
 
   // Plant Horns (6)
-  AxiePart(name: 'Bamboo', slot: BodySlot.horn, axieClass: AxieClass.plant, graphQLId: 'horn-bamboo'),
-  AxiePart(name: 'Beech', slot: BodySlot.horn, axieClass: AxieClass.plant, graphQLId: 'horn-beech'),
-  AxiePart(name: 'Rose Bud', slot: BodySlot.horn, axieClass: AxieClass.plant, graphQLId: 'horn-rose-bud'),
-  AxiePart(name: 'Strawberry Shortcake', slot: BodySlot.horn, axieClass: AxieClass.plant, graphQLId: 'horn-strawberry-shortcake'),
-  AxiePart(name: 'Cactus', slot: BodySlot.horn, axieClass: AxieClass.plant, graphQLId: 'horn-cactus'),
-  AxiePart(name: 'Watermelon', slot: BodySlot.horn, axieClass: AxieClass.plant, graphQLId: 'horn-watermelon'),
+  PartDefinition(name: 'Bamboo', slot: BodySlot.horn, axieClass: AxieClass.plant, candidateSlugs: ['horn-bamboo-shoot', 'horn-bamboo']),
+  PartDefinition(name: 'Beech', slot: BodySlot.horn, axieClass: AxieClass.plant, candidateSlugs: ['horn-beech']),
+  PartDefinition(name: 'Rose Bud', slot: BodySlot.horn, axieClass: AxieClass.plant, candidateSlugs: ['horn-rose-bud']),
+  PartDefinition(name: 'Strawberry Shortcake', slot: BodySlot.horn, axieClass: AxieClass.plant, candidateSlugs: ['horn-strawberry-shortcake']),
+  PartDefinition(name: 'Cactus', slot: BodySlot.horn, axieClass: AxieClass.plant, candidateSlugs: ['horn-cactus']),
+  PartDefinition(name: 'Watermelon', slot: BodySlot.horn, axieClass: AxieClass.plant, candidateSlugs: ['horn-watermelon']),
 
   // Bird Horns (6)
-  AxiePart(name: 'Eggshell', slot: BodySlot.horn, axieClass: AxieClass.bird, graphQLId: 'horn-eggshell'),
-  AxiePart(name: 'Cuckoo', slot: BodySlot.horn, axieClass: AxieClass.bird, graphQLId: 'horn-cuckoo'),
-  AxiePart(name: 'Trump', slot: BodySlot.horn, axieClass: AxieClass.bird, graphQLId: 'horn-trump'),
-  AxiePart(name: 'Kestrel', slot: BodySlot.horn, axieClass: AxieClass.bird, graphQLId: 'horn-kestrel'),
-  AxiePart(name: 'Wing Horn', slot: BodySlot.horn, axieClass: AxieClass.bird, graphQLId: 'horn-wing-horn'),
-  AxiePart(name: 'Feather Spear', slot: BodySlot.horn, axieClass: AxieClass.bird, graphQLId: 'horn-feather-spear'),
+  PartDefinition(name: 'Eggshell', slot: BodySlot.horn, axieClass: AxieClass.bird, candidateSlugs: ['horn-eggshell']),
+  PartDefinition(name: 'Cuckoo', slot: BodySlot.horn, axieClass: AxieClass.bird, candidateSlugs: ['horn-cuckoo']),
+  PartDefinition(name: 'Trump', slot: BodySlot.horn, axieClass: AxieClass.bird, candidateSlugs: ['horn-trump']),
+  PartDefinition(name: 'Kestrel', slot: BodySlot.horn, axieClass: AxieClass.bird, candidateSlugs: ['horn-kestrel']),
+  PartDefinition(name: 'Wing Horn', slot: BodySlot.horn, axieClass: AxieClass.bird, candidateSlugs: ['horn-wing-horn']),
+  PartDefinition(name: 'Feather Spear', slot: BodySlot.horn, axieClass: AxieClass.bird, candidateSlugs: ['horn-feather-spear']),
 
   // Bug Horns (6)
-  AxiePart(name: 'Vall Ein', slot: BodySlot.horn, axieClass: AxieClass.bug, graphQLId: 'horn-vall-ein'),
-  AxiePart(name: 'Antenna', slot: BodySlot.horn, axieClass: AxieClass.bug, graphQLId: 'horn-antenna'),
-  AxiePart(name: 'Caterpillar', slot: BodySlot.horn, axieClass: AxieClass.bug, graphQLId: 'horn-caterpillar'),
-  AxiePart(name: 'Pliers', slot: BodySlot.horn, axieClass: AxieClass.bug, graphQLId: 'horn-pliers'),
-  AxiePart(name: 'Parasite', slot: BodySlot.horn, axieClass: AxieClass.bug, graphQLId: 'horn-parasite'),
-  AxiePart(name: 'Leaf Bug', slot: BodySlot.horn, axieClass: AxieClass.bug, graphQLId: 'horn-leaf-bug'),
+  PartDefinition(name: 'Vall Ein', slot: BodySlot.horn, axieClass: AxieClass.bug, candidateSlugs: ['horn-lagging', 'horn-mystic-rush', 'horn-vall-ein']),
+  PartDefinition(name: 'Antenna', slot: BodySlot.horn, axieClass: AxieClass.bug, candidateSlugs: ['horn-antenna']),
+  PartDefinition(name: 'Caterpillar', slot: BodySlot.horn, axieClass: AxieClass.bug, candidateSlugs: ['horn-caterpillars', 'horn-dente', 'horn-pupa', 'horn-caterpillar']),
+  PartDefinition(name: 'Pliers', slot: BodySlot.horn, axieClass: AxieClass.bug, candidateSlugs: ['horn-pliers']),
+  PartDefinition(name: 'Parasite', slot: BodySlot.horn, axieClass: AxieClass.bug, candidateSlugs: ['horn-parasite']),
+  PartDefinition(name: 'Leaf Bug', slot: BodySlot.horn, axieClass: AxieClass.bug, candidateSlugs: ['horn-leaf-bug']),
 
   // Reptile Horns (6)
-  AxiePart(name: 'Unko', slot: BodySlot.horn, axieClass: AxieClass.reptile, graphQLId: 'horn-unko'),
-  AxiePart(name: 'Scaly Spear', slot: BodySlot.horn, axieClass: AxieClass.reptile, graphQLId: 'horn-scaly-spear'),
-  AxiePart(name: 'Cerastes', slot: BodySlot.horn, axieClass: AxieClass.reptile, graphQLId: 'horn-cerastes'),
-  AxiePart(name: 'Scaly Spoon', slot: BodySlot.horn, axieClass: AxieClass.reptile, graphQLId: 'horn-scaly-spoon'),
-  AxiePart(name: 'Incisor', slot: BodySlot.horn, axieClass: AxieClass.reptile, graphQLId: 'horn-incisor'),
-  AxiePart(name: 'Bumpy', slot: BodySlot.horn, axieClass: AxieClass.reptile, graphQLId: 'horn-bumpy'),
+  PartDefinition(name: 'Unko', slot: BodySlot.horn, axieClass: AxieClass.reptile, candidateSlugs: ['horn-unko']),
+  PartDefinition(name: 'Scaly Spear', slot: BodySlot.horn, axieClass: AxieClass.reptile, candidateSlugs: ['horn-scaly-spear']),
+  PartDefinition(name: 'Cerastes', slot: BodySlot.horn, axieClass: AxieClass.reptile, candidateSlugs: ['horn-cerastes']),
+  PartDefinition(name: 'Scaly Spoon', slot: BodySlot.horn, axieClass: AxieClass.reptile, candidateSlugs: ['horn-scaly-spoon']),
+  PartDefinition(name: 'Incisor', slot: BodySlot.horn, axieClass: AxieClass.reptile, candidateSlugs: ['horn-incisor']),
+  PartDefinition(name: 'Bumpy', slot: BodySlot.horn, axieClass: AxieClass.reptile, candidateSlugs: ['horn-bumpy']),
 
   // ==========================================
   // BACKS (36 parts: 6 per class * 6 classes)
   // ==========================================
   // Beast Backs (6)
-  AxiePart(name: 'Ronin', slot: BodySlot.back, axieClass: AxieClass.beast, graphQLId: 'back-ronin'),
-  AxiePart(name: 'Hero', slot: BodySlot.back, axieClass: AxieClass.beast, graphQLId: 'back-hero'),
-  AxiePart(name: 'Jaguar', slot: BodySlot.back, axieClass: AxieClass.beast, graphQLId: 'back-jaguar'),
-  AxiePart(name: 'Risky Beast', slot: BodySlot.back, axieClass: AxieClass.beast, graphQLId: 'back-risky-beast'),
-  AxiePart(name: 'Timber', slot: BodySlot.back, axieClass: AxieClass.beast, graphQLId: 'back-timber'),
-  AxiePart(name: 'Furball', slot: BodySlot.back, axieClass: AxieClass.beast, graphQLId: 'back-furball'),
+  PartDefinition(name: 'Ronin', slot: BodySlot.back, axieClass: AxieClass.beast, candidateSlugs: ['back-ronin']),
+  PartDefinition(name: 'Hero', slot: BodySlot.back, axieClass: AxieClass.beast, candidateSlugs: ['back-hero']),
+  PartDefinition(name: 'Jaguar', slot: BodySlot.back, axieClass: AxieClass.beast, candidateSlugs: ['back-jaguar']),
+  PartDefinition(name: 'Risky Beast', slot: BodySlot.back, axieClass: AxieClass.beast, candidateSlugs: ['back-risky-beast']),
+  PartDefinition(name: 'Timber', slot: BodySlot.back, axieClass: AxieClass.beast, candidateSlugs: ['back-timber']),
+  PartDefinition(name: 'Furball', slot: BodySlot.back, axieClass: AxieClass.beast, candidateSlugs: ['back-furball']),
 
   // Aquatic Backs (6)
-  AxiePart(name: 'Hermit', slot: BodySlot.back, axieClass: AxieClass.aquatic, graphQLId: 'back-hermit'),
-  AxiePart(name: 'Blue Moon', slot: BodySlot.back, axieClass: AxieClass.aquatic, graphQLId: 'back-blue-moon'),
-  AxiePart(name: 'Goldfish', slot: BodySlot.back, axieClass: AxieClass.aquatic, graphQLId: 'back-goldfish'),
-  AxiePart(name: 'Sponge', slot: BodySlot.back, axieClass: AxieClass.aquatic, graphQLId: 'back-sponge'),
-  AxiePart(name: 'Anemone', slot: BodySlot.back, axieClass: AxieClass.aquatic, graphQLId: 'back-anemone'),
-  AxiePart(name: 'Perch', slot: BodySlot.back, axieClass: AxieClass.aquatic, graphQLId: 'back-perch'),
+  PartDefinition(name: 'Hermit', slot: BodySlot.back, axieClass: AxieClass.aquatic, candidateSlugs: ['back-hermit']),
+  PartDefinition(name: 'Blue Moon', slot: BodySlot.back, axieClass: AxieClass.aquatic, candidateSlugs: ['back-blue-moon']),
+  PartDefinition(name: 'Goldfish', slot: BodySlot.back, axieClass: AxieClass.aquatic, candidateSlugs: ['back-goldfish']),
+  PartDefinition(name: 'Sponge', slot: BodySlot.back, axieClass: AxieClass.aquatic, candidateSlugs: ['back-sponge']),
+  PartDefinition(name: 'Anemone', slot: BodySlot.back, axieClass: AxieClass.aquatic, candidateSlugs: ['back-anemone']),
+  PartDefinition(name: 'Perch', slot: BodySlot.back, axieClass: AxieClass.aquatic, candidateSlugs: ['back-perch']),
 
   // Plant Backs (6)
-  AxiePart(name: 'Turnip', slot: BodySlot.back, axieClass: AxieClass.plant, graphQLId: 'back-turnip'),
-  AxiePart(name: 'Shiitake', slot: BodySlot.back, axieClass: AxieClass.plant, graphQLId: 'back-shiitake'),
-  AxiePart(name: 'Bidens', slot: BodySlot.back, axieClass: AxieClass.plant, graphQLId: 'back-bidens'),
-  AxiePart(name: 'Watering Can', slot: BodySlot.back, axieClass: AxieClass.plant, graphQLId: 'back-watering-can'),
-  AxiePart(name: 'Mint', slot: BodySlot.back, axieClass: AxieClass.plant, graphQLId: 'back-mint'),
-  AxiePart(name: 'Pumpkin', slot: BodySlot.back, axieClass: AxieClass.plant, graphQLId: 'back-pumpkin'),
+  PartDefinition(name: 'Turnip', slot: BodySlot.back, axieClass: AxieClass.plant, candidateSlugs: ['back-turnip']),
+  PartDefinition(name: 'Shiitake', slot: BodySlot.back, axieClass: AxieClass.plant, candidateSlugs: ['back-shiitake']),
+  PartDefinition(name: 'Bidens', slot: BodySlot.back, axieClass: AxieClass.plant, candidateSlugs: ['back-bidens']),
+  PartDefinition(name: 'Watering Can', slot: BodySlot.back, axieClass: AxieClass.plant, candidateSlugs: ['back-watering-can']),
+  PartDefinition(name: 'Mint', slot: BodySlot.back, axieClass: AxieClass.plant, candidateSlugs: ['back-mint']),
+  PartDefinition(name: 'Pumpkin', slot: BodySlot.back, axieClass: AxieClass.plant, candidateSlugs: ['back-pumpkin']),
 
   // Bird Backs (6)
-  AxiePart(name: 'Pigeon Post', slot: BodySlot.back, axieClass: AxieClass.bird, graphQLId: 'back-pigeon-post'),
-  AxiePart(name: 'Raven', slot: BodySlot.back, axieClass: AxieClass.bird, graphQLId: 'back-raven'),
-  AxiePart(name: 'Cupid', slot: BodySlot.back, axieClass: AxieClass.bird, graphQLId: 'back-cupid'),
-  AxiePart(name: 'Kingfisher', slot: BodySlot.back, axieClass: AxieClass.bird, graphQLId: 'back-kingfisher'),
-  AxiePart(name: 'Tri Feather', slot: BodySlot.back, axieClass: AxieClass.bird, graphQLId: 'back-tri-feather'),
-  AxiePart(name: 'Balloon', slot: BodySlot.back, axieClass: AxieClass.bird, graphQLId: 'back-balloon'),
+  PartDefinition(name: 'Pigeon Post', slot: BodySlot.back, axieClass: AxieClass.bird, candidateSlugs: ['back-pigeon-post']),
+  PartDefinition(name: 'Raven', slot: BodySlot.back, axieClass: AxieClass.bird, candidateSlugs: ['back-raven']),
+  PartDefinition(name: 'Cupid', slot: BodySlot.back, axieClass: AxieClass.bird, candidateSlugs: ['back-cupid']),
+  PartDefinition(name: 'Kingfisher', slot: BodySlot.back, axieClass: AxieClass.bird, candidateSlugs: ['back-kingfisher']),
+  PartDefinition(name: 'Tri Feather', slot: BodySlot.back, axieClass: AxieClass.bird, candidateSlugs: ['back-tri-feather']),
+  PartDefinition(name: 'Balloon', slot: BodySlot.back, axieClass: AxieClass.bird, candidateSlugs: ['back-balloon']),
 
   // Bug Backs (6)
-  AxiePart(name: 'Snail Shell', slot: BodySlot.back, axieClass: AxieClass.bug, graphQLId: 'back-snail-shell'),
-  AxiePart(name: 'Garish Worm', slot: BodySlot.back, axieClass: AxieClass.bug, graphQLId: 'back-garish-worm'),
-  AxiePart(name: 'Buzz Buzz', slot: BodySlot.back, axieClass: AxieClass.bug, graphQLId: 'back-buzz-buzz'),
-  AxiePart(name: 'Sandal', slot: BodySlot.back, axieClass: AxieClass.bug, graphQLId: 'back-sandal'),
-  AxiePart(name: 'Scarab', slot: BodySlot.back, axieClass: AxieClass.bug, graphQLId: 'back-scarab'),
-  AxiePart(name: 'Spiky Wing', slot: BodySlot.back, axieClass: AxieClass.bug, graphQLId: 'back-spiky-wing'),
+  PartDefinition(name: 'Snail Shell', slot: BodySlot.back, axieClass: AxieClass.bug, candidateSlugs: ['back-snail-shell']),
+  PartDefinition(name: 'Garish Worm', slot: BodySlot.back, axieClass: AxieClass.bug, candidateSlugs: ['back-garish-worm']),
+  PartDefinition(name: 'Buzz Buzz', slot: BodySlot.back, axieClass: AxieClass.bug, candidateSlugs: ['back-buzz-buzz']),
+  PartDefinition(name: 'Sandal', slot: BodySlot.back, axieClass: AxieClass.bug, candidateSlugs: ['back-sandal']),
+  PartDefinition(name: 'Scarab', slot: BodySlot.back, axieClass: AxieClass.bug, candidateSlugs: ['back-scarab']),
+  PartDefinition(name: 'Spiky Wing', slot: BodySlot.back, axieClass: AxieClass.bug, candidateSlugs: ['back-spiky-wing']),
 
   // Reptile Backs (6)
-  AxiePart(name: 'Bone Sail', slot: BodySlot.back, axieClass: AxieClass.reptile, graphQLId: 'back-bone-sail'),
-  AxiePart(name: 'Tri Spikes', slot: BodySlot.back, axieClass: AxieClass.reptile, graphQLId: 'back-tri-spikes'),
-  AxiePart(name: 'Green Thorns', slot: BodySlot.back, axieClass: AxieClass.reptile, graphQLId: 'back-green-thorns'),
-  AxiePart(name: 'Indian Star', slot: BodySlot.back, axieClass: AxieClass.reptile, graphQLId: 'back-indian-star'),
-  AxiePart(name: 'Red Ear', slot: BodySlot.back, axieClass: AxieClass.reptile, graphQLId: 'back-red-ear'),
-  AxiePart(name: 'Croc', slot: BodySlot.back, axieClass: AxieClass.reptile, graphQLId: 'back-croc'),
+  PartDefinition(name: 'Bone Sail', slot: BodySlot.back, axieClass: AxieClass.reptile, candidateSlugs: ['back-bone-sail']),
+  PartDefinition(name: 'Tri Spikes', slot: BodySlot.back, axieClass: AxieClass.reptile, candidateSlugs: ['back-tri-spikes']),
+  PartDefinition(name: 'Green Thorns', slot: BodySlot.back, axieClass: AxieClass.reptile, candidateSlugs: ['back-green-thorns']),
+  PartDefinition(name: 'Indian Star', slot: BodySlot.back, axieClass: AxieClass.reptile, candidateSlugs: ['back-indian-star']),
+  PartDefinition(name: 'Red Ear', slot: BodySlot.back, axieClass: AxieClass.reptile, candidateSlugs: ['back-red-ear']),
+  PartDefinition(name: 'Croc', slot: BodySlot.back, axieClass: AxieClass.reptile, candidateSlugs: ['back-croc']),
 
   // ==========================================
   // MOUTHS (24 parts: 4 per class * 6 classes)
   // ==========================================
   // Beast Mouths (4)
-  AxiePart(name: 'Nutcracker', slot: BodySlot.mouth, axieClass: AxieClass.beast, graphQLId: 'mouth-nut-cracker'),
-  AxiePart(name: 'Axie Kiss', slot: BodySlot.mouth, axieClass: AxieClass.beast, graphQLId: 'mouth-axie-kiss'),
-  AxiePart(name: 'Goda', slot: BodySlot.mouth, axieClass: AxieClass.beast, graphQLId: 'mouth-goda'),
-  AxiePart(name: 'Confident', slot: BodySlot.mouth, axieClass: AxieClass.beast, graphQLId: 'mouth-confident'),
+  PartDefinition(name: 'Nutcracker', slot: BodySlot.mouth, axieClass: AxieClass.beast, candidateSlugs: ['mouth-nut-cracker']),
+  PartDefinition(name: 'Axie Kiss', slot: BodySlot.mouth, axieClass: AxieClass.beast, candidateSlugs: ['mouth-axie-kiss']),
+  PartDefinition(name: 'Goda', slot: BodySlot.mouth, axieClass: AxieClass.beast, candidateSlugs: ['mouth-goda']),
+  PartDefinition(name: 'Confident', slot: BodySlot.mouth, axieClass: AxieClass.beast, candidateSlugs: ['mouth-confident']),
 
   // Aquatic Mouths (4)
-  AxiePart(name: 'Lam', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, graphQLId: 'mouth-lam'),
-  AxiePart(name: 'Risky Fish', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, graphQLId: 'mouth-risky-fish'),
-  AxiePart(name: 'Piranha', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, graphQLId: 'mouth-piranha'),
-  AxiePart(name: 'Catfish', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, graphQLId: 'mouth-catfish'),
+  PartDefinition(name: 'Lam', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, candidateSlugs: ['mouth-lam']),
+  PartDefinition(name: 'Risky Fish', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, candidateSlugs: ['mouth-risky-fish']),
+  PartDefinition(name: 'Piranha', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, candidateSlugs: ['mouth-piranha']),
+  PartDefinition(name: 'Catfish', slot: BodySlot.mouth, axieClass: AxieClass.aquatic, candidateSlugs: ['mouth-catfish']),
 
   // Plant Mouths (4)
-  AxiePart(name: 'Serious', slot: BodySlot.mouth, axieClass: AxieClass.plant, graphQLId: 'mouth-serious'),
-  AxiePart(name: 'Zigzag', slot: BodySlot.mouth, axieClass: AxieClass.plant, graphQLId: 'mouth-zigzag'),
-  AxiePart(name: 'Herbivore', slot: BodySlot.mouth, axieClass: AxieClass.plant, graphQLId: 'mouth-herbivore'),
-  AxiePart(name: 'Silence Whisper', slot: BodySlot.mouth, axieClass: AxieClass.plant, graphQLId: 'mouth-silence-whisper'),
+  PartDefinition(name: 'Serious', slot: BodySlot.mouth, axieClass: AxieClass.plant, candidateSlugs: ['mouth-serious']),
+  PartDefinition(name: 'Zigzag', slot: BodySlot.mouth, axieClass: AxieClass.plant, candidateSlugs: ['mouth-zigzag']),
+  PartDefinition(name: 'Herbivore', slot: BodySlot.mouth, axieClass: AxieClass.plant, candidateSlugs: ['mouth-herbivore']),
+  PartDefinition(name: 'Silence Whisper', slot: BodySlot.mouth, axieClass: AxieClass.plant, candidateSlugs: ['mouth-silence-whisper']),
 
   // Bird Mouths (4)
-  AxiePart(name: 'Doubletalk', slot: BodySlot.mouth, axieClass: AxieClass.bird, graphQLId: 'mouth-doubletalk'),
-  AxiePart(name: 'Peace Maker', slot: BodySlot.mouth, axieClass: AxieClass.bird, graphQLId: 'mouth-peace-maker'),
-  AxiePart(name: 'Little Owl', slot: BodySlot.mouth, axieClass: AxieClass.bird, graphQLId: 'mouth-little-owl'),
-  AxiePart(name: 'Hungry Bird', slot: BodySlot.mouth, axieClass: AxieClass.bird, graphQLId: 'mouth-hungry-bird'),
+  PartDefinition(name: 'Doubletalk', slot: BodySlot.mouth, axieClass: AxieClass.bird, candidateSlugs: ['mouth-doubletalk']),
+  PartDefinition(name: 'Peace Maker', slot: BodySlot.mouth, axieClass: AxieClass.bird, candidateSlugs: ['mouth-peace-maker']),
+  PartDefinition(name: 'Little Owl', slot: BodySlot.mouth, axieClass: AxieClass.bird, candidateSlugs: ['mouth-little-owl']),
+  PartDefinition(name: 'Hungry Bird', slot: BodySlot.mouth, axieClass: AxieClass.bird, candidateSlugs: ['mouth-hungry-bird']),
 
   // Bug Mouths (4)
-  AxiePart(name: 'Mosquito', slot: BodySlot.mouth, axieClass: AxieClass.bug, graphQLId: 'mouth-mosquito'),
-  AxiePart(name: 'Cute Bunny', slot: BodySlot.mouth, axieClass: AxieClass.bug, graphQLId: 'mouth-cute-bunny'),
-  AxiePart(name: 'Square Teeth', slot: BodySlot.mouth, axieClass: AxieClass.bug, graphQLId: 'mouth-square-teeth'),
-  AxiePart(name: 'Pincer', slot: BodySlot.mouth, axieClass: AxieClass.bug, graphQLId: 'mouth-pincer'),
+  PartDefinition(name: 'Mosquito', slot: BodySlot.mouth, axieClass: AxieClass.bug, candidateSlugs: ['mouth-mosquito']),
+  PartDefinition(name: 'Cute Bunny', slot: BodySlot.mouth, axieClass: AxieClass.bug, candidateSlugs: ['mouth-cute-bunny']),
+  PartDefinition(name: 'Square Teeth', slot: BodySlot.mouth, axieClass: AxieClass.bug, candidateSlugs: ['mouth-square-teeth']),
+  PartDefinition(name: 'Pincer', slot: BodySlot.mouth, axieClass: AxieClass.bug, candidateSlugs: ['mouth-pincer']),
 
   // Reptile Mouths (4)
-  AxiePart(name: 'Toothless Bite', slot: BodySlot.mouth, axieClass: AxieClass.reptile, graphQLId: 'mouth-toothless-bite'),
-  AxiePart(name: 'Kotaro', slot: BodySlot.mouth, axieClass: AxieClass.reptile, graphQLId: 'mouth-kotaro'),
-  AxiePart(name: 'Razor Bite', slot: BodySlot.mouth, axieClass: AxieClass.reptile, graphQLId: 'mouth-razor-bite'),
-  AxiePart(name: 'Tiny Turtle', slot: BodySlot.mouth, axieClass: AxieClass.reptile, graphQLId: 'mouth-tiny-turtle'),
+  PartDefinition(name: 'Toothless Bite', slot: BodySlot.mouth, axieClass: AxieClass.reptile, candidateSlugs: ['mouth-toothless-bite']),
+  PartDefinition(name: 'Kotaro', slot: BodySlot.mouth, axieClass: AxieClass.reptile, candidateSlugs: ['mouth-kotaro']),
+  PartDefinition(name: 'Razor Bite', slot: BodySlot.mouth, axieClass: AxieClass.reptile, candidateSlugs: ['mouth-razor-bite']),
+  PartDefinition(name: 'Tiny Turtle', slot: BodySlot.mouth, axieClass: AxieClass.reptile, candidateSlugs: ['mouth-tiny-turtle']),
 
   // ==========================================
   // TAILS (36 parts: 6 per class * 6 classes)
   // ==========================================
   // Beast Tails (6)
-  AxiePart(name: 'Cottontail', slot: BodySlot.tail, axieClass: AxieClass.beast, graphQLId: 'tail-cottontail'),
-  AxiePart(name: 'Rice', slot: BodySlot.tail, axieClass: AxieClass.beast, graphQLId: 'tail-rice'),
-  AxiePart(name: 'Shiva', slot: BodySlot.tail, axieClass: AxieClass.beast, graphQLId: 'tail-shiva'),
-  AxiePart(name: 'Gerbil', slot: BodySlot.tail, axieClass: AxieClass.beast, graphQLId: 'tail-gerbil'),
-  AxiePart(name: 'Hare', slot: BodySlot.tail, axieClass: AxieClass.beast, graphQLId: 'tail-hare'),
-  AxiePart(name: 'Nutcracker', slot: BodySlot.tail, axieClass: AxieClass.beast, graphQLId: 'tail-nut-cracker'),
+  PartDefinition(name: 'Cottontail', slot: BodySlot.tail, axieClass: AxieClass.beast, candidateSlugs: ['tail-cottontail']),
+  PartDefinition(name: 'Rice', slot: BodySlot.tail, axieClass: AxieClass.beast, candidateSlugs: ['tail-rice']),
+  PartDefinition(name: 'Shiba', slot: BodySlot.tail, axieClass: AxieClass.beast, candidateSlugs: ['tail-shiba', 'tail-shiva']),
+  PartDefinition(name: 'Gerbil', slot: BodySlot.tail, axieClass: AxieClass.beast, candidateSlugs: ['tail-gerbil']),
+  PartDefinition(name: 'Hare', slot: BodySlot.tail, axieClass: AxieClass.beast, candidateSlugs: ['tail-hare']),
+  PartDefinition(name: 'Nutcracker', slot: BodySlot.tail, axieClass: AxieClass.beast, candidateSlugs: ['tail-nut-cracker']),
 
   // Aquatic Tails (6)
-  AxiePart(name: 'Koi', slot: BodySlot.tail, axieClass: AxieClass.aquatic, graphQLId: 'tail-koi'),
-  AxiePart(name: 'Nimo', slot: BodySlot.tail, axieClass: AxieClass.aquatic, graphQLId: 'tail-nimo'),
-  AxiePart(name: 'Tadpole', slot: BodySlot.tail, axieClass: AxieClass.aquatic, graphQLId: 'tail-tadpole'),
-  AxiePart(name: 'Ranchu', slot: BodySlot.tail, axieClass: AxieClass.aquatic, graphQLId: 'tail-ranchu'),
-  AxiePart(name: 'Navaga', slot: BodySlot.tail, axieClass: AxieClass.aquatic, graphQLId: 'tail-navaga'),
-  AxiePart(name: 'Shrimp', slot: BodySlot.tail, axieClass: AxieClass.aquatic, graphQLId: 'tail-shrimp'),
+  PartDefinition(name: 'Koi', slot: BodySlot.tail, axieClass: AxieClass.aquatic, candidateSlugs: ['tail-koi']),
+  PartDefinition(name: 'Nimo', slot: BodySlot.tail, axieClass: AxieClass.aquatic, candidateSlugs: ['tail-nimo']),
+  PartDefinition(name: 'Tadpole', slot: BodySlot.tail, axieClass: AxieClass.aquatic, candidateSlugs: ['tail-tadpole']),
+  PartDefinition(name: 'Ranchu', slot: BodySlot.tail, axieClass: AxieClass.aquatic, candidateSlugs: ['tail-ranchu']),
+  PartDefinition(name: 'Navaga', slot: BodySlot.tail, axieClass: AxieClass.aquatic, candidateSlugs: ['tail-navaga']),
+  PartDefinition(name: 'Shrimp', slot: BodySlot.tail, axieClass: AxieClass.aquatic, candidateSlugs: ['tail-shrimp']),
 
   // Plant Tails (6)
-  AxiePart(name: 'Carrot', slot: BodySlot.tail, axieClass: AxieClass.plant, graphQLId: 'tail-carrot'),
-  AxiePart(name: 'Cattail', slot: BodySlot.tail, axieClass: AxieClass.plant, graphQLId: 'tail-cattail'),
-  AxiePart(name: 'Hatsune', slot: BodySlot.tail, axieClass: AxieClass.plant, graphQLId: 'tail-hatsune'),
-  AxiePart(name: 'Yam', slot: BodySlot.tail, axieClass: AxieClass.plant, graphQLId: 'tail-yam'),
-  AxiePart(name: 'Potato Leaf', slot: BodySlot.tail, axieClass: AxieClass.plant, graphQLId: 'tail-potato-leaf'),
-  AxiePart(name: 'Hot Butt', slot: BodySlot.tail, axieClass: AxieClass.plant, graphQLId: 'tail-hot-butt'),
+  PartDefinition(name: 'Carrot', slot: BodySlot.tail, axieClass: AxieClass.plant, candidateSlugs: ['tail-carrot']),
+  PartDefinition(name: 'Cattail', slot: BodySlot.tail, axieClass: AxieClass.plant, candidateSlugs: ['tail-cattail']),
+  PartDefinition(name: 'Hatsune', slot: BodySlot.tail, axieClass: AxieClass.plant, candidateSlugs: ['tail-hatsune']),
+  PartDefinition(name: 'Yam', slot: BodySlot.tail, axieClass: AxieClass.plant, candidateSlugs: ['tail-yam']),
+  PartDefinition(name: 'Potato Leaf', slot: BodySlot.tail, axieClass: AxieClass.plant, candidateSlugs: ['tail-potato-leaf']),
+  PartDefinition(name: 'Hot Butt', slot: BodySlot.tail, axieClass: AxieClass.plant, candidateSlugs: ['tail-hot-butt']),
 
   // Bird Tails (6)
-  AxiePart(name: 'Swallow', slot: BodySlot.tail, axieClass: AxieClass.bird, graphQLId: 'tail-swallow'),
-  AxiePart(name: 'Feather Fan', slot: BodySlot.tail, axieClass: AxieClass.bird, graphQLId: 'tail-feather-fan'),
-  AxiePart(name: 'The Last One', slot: BodySlot.tail, axieClass: AxieClass.bird, graphQLId: 'tail-the-last-one'),
-  AxiePart(name: 'Cloud', slot: BodySlot.tail, axieClass: AxieClass.bird, graphQLId: 'tail-cloud'),
-  AxiePart(name: 'Granma\'s Fan', slot: BodySlot.tail, axieClass: AxieClass.bird, graphQLId: 'tail-granmas-fan'),
-  AxiePart(name: 'Post Fight', slot: BodySlot.tail, axieClass: AxieClass.bird, graphQLId: 'tail-post-fight'),
+  PartDefinition(name: 'Swallow', slot: BodySlot.tail, axieClass: AxieClass.bird, candidateSlugs: ['tail-swallow']),
+  PartDefinition(name: 'Feather Fan', slot: BodySlot.tail, axieClass: AxieClass.bird, candidateSlugs: ['tail-feather-fan']),
+  PartDefinition(name: 'The Last One', slot: BodySlot.tail, axieClass: AxieClass.bird, candidateSlugs: ['tail-the-last-one']),
+  PartDefinition(name: 'Cloud', slot: BodySlot.tail, axieClass: AxieClass.bird, candidateSlugs: ['tail-cloud']),
+  PartDefinition(name: 'Granma\'s Fan', slot: BodySlot.tail, axieClass: AxieClass.bird, candidateSlugs: ['tail-granmas-fan']),
+  PartDefinition(name: 'Post Fight', slot: BodySlot.tail, axieClass: AxieClass.bird, candidateSlugs: ['tail-post-fight']),
 
   // Bug Tails (6)
-  AxiePart(name: 'Ant', slot: BodySlot.tail, axieClass: AxieClass.bug, graphQLId: 'tail-ant'),
-  AxiePart(name: 'Twin Needle', slot: BodySlot.tail, axieClass: AxieClass.bug, graphQLId: 'tail-twin-needle'),
-  AxiePart(name: 'Fish Snack', slot: BodySlot.tail, axieClass: AxieClass.bug, graphQLId: 'tail-fish-snack'),
-  AxiePart(name: 'Gravel Ant', slot: BodySlot.tail, axieClass: AxieClass.bug, graphQLId: 'tail-gravel-ant'),
-  AxiePart(name: 'Pupae', slot: BodySlot.tail, axieClass: AxieClass.bug, graphQLId: 'tail-pupae'),
-  AxiePart(name: 'Thorny Caterpillar', slot: BodySlot.tail, axieClass: AxieClass.bug, graphQLId: 'tail-thorny-caterpillar'),
+  PartDefinition(name: 'Ant', slot: BodySlot.tail, axieClass: AxieClass.bug, candidateSlugs: ['tail-ant']),
+  PartDefinition(name: 'Twin Needle', slot: BodySlot.tail, axieClass: AxieClass.bug, candidateSlugs: ['tail-twin-tail', 'tail-twin-needles', 'tail-twinneedle', 'tail-twin-needle']),
+  PartDefinition(name: 'Fish Snack', slot: BodySlot.tail, axieClass: AxieClass.bug, candidateSlugs: ['tail-fish-snack']),
+  PartDefinition(name: 'Gravel Ant', slot: BodySlot.tail, axieClass: AxieClass.bug, candidateSlugs: ['tail-gravel-ant']),
+  PartDefinition(name: 'Pupae', slot: BodySlot.tail, axieClass: AxieClass.bug, candidateSlugs: ['tail-pupae']),
+  PartDefinition(name: 'Thorny Caterpillar', slot: BodySlot.tail, axieClass: AxieClass.bug, candidateSlugs: ['tail-thorny-caterpillar']),
 
   // Reptile Tails (6)
-  AxiePart(name: 'Wall Gecko', slot: BodySlot.tail, axieClass: AxieClass.reptile, graphQLId: 'tail-wall-gecko'),
-  AxiePart(name: 'Iguana', slot: BodySlot.tail, axieClass: AxieClass.reptile, graphQLId: 'tail-iguana'),
-  AxiePart(name: 'Tiny Dino', slot: BodySlot.tail, axieClass: AxieClass.reptile, graphQLId: 'tail-tiny-dino'),
-  AxiePart(name: 'Snake Jar', slot: BodySlot.tail, axieClass: AxieClass.reptile, graphQLId: 'tail-snake-jar'),
-  AxiePart(name: 'Gila', slot: BodySlot.tail, axieClass: AxieClass.reptile, graphQLId: 'tail-gila'),
-  AxiePart(name: 'Grass Snake', slot: BodySlot.tail, axieClass: AxieClass.reptile, graphQLId: 'tail-grass-snake'),
+  PartDefinition(name: 'Wall Gecko', slot: BodySlot.tail, axieClass: AxieClass.reptile, candidateSlugs: ['tail-wall-gecko']),
+  PartDefinition(name: 'Iguana', slot: BodySlot.tail, axieClass: AxieClass.reptile, candidateSlugs: ['tail-iguana']),
+  PartDefinition(name: 'Tiny Dino', slot: BodySlot.tail, axieClass: AxieClass.reptile, candidateSlugs: ['tail-tiny-dino']),
+  PartDefinition(name: 'Snake Jar', slot: BodySlot.tail, axieClass: AxieClass.reptile, candidateSlugs: ['tail-snake-jar']),
+  PartDefinition(name: 'Gila', slot: BodySlot.tail, axieClass: AxieClass.reptile, candidateSlugs: ['tail-gila']),
+  PartDefinition(name: 'Grass Snake', slot: BodySlot.tail, axieClass: AxieClass.reptile, candidateSlugs: ['tail-grass-snake']),
 
   // ==========================================
   // EYES (36 parts: 6 per class * 6 classes)
   // ==========================================
   // Beast Eyes (6)
-  AxiePart(name: 'Puppy', slot: BodySlot.eyes, axieClass: AxieClass.beast, graphQLId: 'eyes-puppy'),
-  AxiePart(name: 'Calico Zee', slot: BodySlot.eyes, axieClass: AxieClass.beast, graphQLId: 'eyes-calico-zee'),
-  AxiePart(name: 'Little Peas', slot: BodySlot.eyes, axieClass: AxieClass.beast, graphQLId: 'eyes-little-peas'),
-  AxiePart(name: 'Chubby', slot: BodySlot.eyes, axieClass: AxieClass.beast, graphQLId: 'eyes-chubby'),
-  AxiePart(name: 'Zeek', slot: BodySlot.eyes, axieClass: AxieClass.beast, graphQLId: 'eyes-zeek'),
-  AxiePart(name: 'Snowflakes', slot: BodySlot.eyes, axieClass: AxieClass.beast, graphQLId: 'eyes-snowflakes'),
+  PartDefinition(name: 'Puppy', slot: BodySlot.eyes, axieClass: AxieClass.beast, candidateSlugs: ['eyes-puppy']),
+  PartDefinition(name: 'Calico', slot: BodySlot.eyes, axieClass: AxieClass.beast, candidateSlugs: ['eyes-calico', 'eyes-calico-zee']),
+  PartDefinition(name: 'Little Peas', slot: BodySlot.eyes, axieClass: AxieClass.beast, candidateSlugs: ['eyes-little-peas']),
+  PartDefinition(name: 'Chubby', slot: BodySlot.eyes, axieClass: AxieClass.beast, candidateSlugs: ['eyes-chubby']),
+  PartDefinition(name: 'Zeal', slot: BodySlot.eyes, axieClass: AxieClass.beast, candidateSlugs: ['eyes-zeal', 'eyes-chubby', 'eyes-zeek']),
+  PartDefinition(name: 'Snowflakes', slot: BodySlot.eyes, axieClass: AxieClass.beast, candidateSlugs: ['eyes-snowflakes']),
 
   // Aquatic Eyes (6)
-  AxiePart(name: 'Sleepless', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, graphQLId: 'eyes-sleepless'),
-  AxiePart(name: 'Clear', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, graphQLId: 'eyes-clear'),
-  AxiePart(name: 'Gero', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, graphQLId: 'eyes-gero'),
-  AxiePart(name: 'Telescopes', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, graphQLId: 'eyes-telescopes'),
-  AxiePart(name: 'Insomnia', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, graphQLId: 'eyes-insomnia'),
-  AxiePart(name: 'Blosson', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, graphQLId: 'eyes-blosson'),
+  PartDefinition(name: 'Sleepless', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, candidateSlugs: ['eyes-sleepless']),
+  PartDefinition(name: 'Clear', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, candidateSlugs: ['eyes-clear']),
+  PartDefinition(name: 'Gero', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, candidateSlugs: ['eyes-gero']),
+  PartDefinition(name: 'Telescope', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, candidateSlugs: ['eyes-telescope', 'eyes-telescopes']),
+  PartDefinition(name: 'Insomnia', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, candidateSlugs: ['eyes-insomnia']),
+  PartDefinition(name: 'Gero / Clear', slot: BodySlot.eyes, axieClass: AxieClass.aquatic, candidateSlugs: ['eyes-clear', 'eyes-gero', 'eyes-blosson']),
 
   // Plant Eyes (6)
-  AxiePart(name: 'Papi', slot: BodySlot.eyes, axieClass: AxieClass.plant, graphQLId: 'eyes-papi'),
-  AxiePart(name: 'Blossom', slot: BodySlot.eyes, axieClass: AxieClass.plant, graphQLId: 'eyes-blossom'),
-  AxiePart(name: 'Cucumber Slice', slot: BodySlot.eyes, axieClass: AxieClass.plant, graphQLId: 'eyes-cucumber-slice'),
-  AxiePart(name: 'Confused', slot: BodySlot.eyes, axieClass: AxieClass.plant, graphQLId: 'eyes-confused'),
-  AxiePart(name: 'Mistletoe', slot: BodySlot.eyes, axieClass: AxieClass.plant, graphQLId: 'eyes-mistletoe'),
-  AxiePart(name: 'Dreamy Papi', slot: BodySlot.eyes, axieClass: AxieClass.plant, graphQLId: 'eyes-dreamy-papi'),
+  PartDefinition(name: 'Papi', slot: BodySlot.eyes, axieClass: AxieClass.plant, candidateSlugs: ['eyes-papi']),
+  PartDefinition(name: 'Blossom', slot: BodySlot.eyes, axieClass: AxieClass.plant, candidateSlugs: ['eyes-blossom']),
+  PartDefinition(name: 'Cucumber Slice', slot: BodySlot.eyes, axieClass: AxieClass.plant, candidateSlugs: ['eyes-cucumber-slice']),
+  PartDefinition(name: 'Confused', slot: BodySlot.eyes, axieClass: AxieClass.plant, candidateSlugs: ['eyes-confused']),
+  PartDefinition(name: 'Confused / Papi', slot: BodySlot.eyes, axieClass: AxieClass.plant, candidateSlugs: ['eyes-confused', 'eyes-papi', 'eyes-mistletoe']),
+  PartDefinition(name: 'Dreamy Papi', slot: BodySlot.eyes, axieClass: AxieClass.plant, candidateSlugs: ['eyes-dreamy-papi']),
 
   // Bird Eyes (6)
-  AxiePart(name: 'Mavis', slot: BodySlot.eyes, axieClass: AxieClass.bird, graphQLId: 'eyes-mavis'),
-  AxiePart(name: 'Lucas', slot: BodySlot.eyes, axieClass: AxieClass.bird, graphQLId: 'eyes-lucas'),
-  AxiePart(name: 'Robin', slot: BodySlot.eyes, axieClass: AxieClass.bird, graphQLId: 'eyes-robin'),
-  AxiePart(name: 'Little Owl', slot: BodySlot.eyes, axieClass: AxieClass.bird, graphQLId: 'eyes-little-owl'),
-  AxiePart(name: 'Sky Mavis', slot: BodySlot.eyes, axieClass: AxieClass.bird, graphQLId: 'eyes-sky-mavis'),
-  AxiePart(name: 'Crimson Gecko', slot: BodySlot.eyes, axieClass: AxieClass.bird, graphQLId: 'eyes-crimson-gecko'),
+  PartDefinition(name: 'Mavis', slot: BodySlot.eyes, axieClass: AxieClass.bird, candidateSlugs: ['eyes-mavis']),
+  PartDefinition(name: 'Lucas', slot: BodySlot.eyes, axieClass: AxieClass.bird, candidateSlugs: ['eyes-lucas']),
+  PartDefinition(name: 'Robin', slot: BodySlot.eyes, axieClass: AxieClass.bird, candidateSlugs: ['eyes-robin']),
+  PartDefinition(name: 'Little Owl', slot: BodySlot.eyes, axieClass: AxieClass.bird, candidateSlugs: ['eyes-little-owl']),
+  PartDefinition(name: 'Sky Mavis', slot: BodySlot.eyes, axieClass: AxieClass.bird, candidateSlugs: ['eyes-sky-mavis']),
+  PartDefinition(name: 'Crimson Gecko', slot: BodySlot.eyes, axieClass: AxieClass.bird, candidateSlugs: ['eyes-crimson-gecko']),
 
   // Bug Eyes (6)
-  AxiePart(name: 'Bookworm', slot: BodySlot.eyes, axieClass: AxieClass.bug, graphQLId: 'eyes-bookworm'),
-  AxiePart(name: 'Neo', slot: BodySlot.eyes, axieClass: AxieClass.bug, graphQLId: 'eyes-neo'),
-  AxiePart(name: 'Nerdy', slot: BodySlot.eyes, axieClass: AxieClass.bug, graphQLId: 'eyes-nerdy'),
-  AxiePart(name: 'Kotaro', slot: BodySlot.eyes, axieClass: AxieClass.bug, graphQLId: 'eyes-kotaro'),
-  AxiePart(name: 'Geisha', slot: BodySlot.eyes, axieClass: AxieClass.bug, graphQLId: 'eyes-geisha'),
-  AxiePart(name: 'Dente', slot: BodySlot.eyes, axieClass: AxieClass.bug, graphQLId: 'eyes-dente'),
+  PartDefinition(name: 'Bookworm', slot: BodySlot.eyes, axieClass: AxieClass.bug, candidateSlugs: ['eyes-bookworm']),
+  PartDefinition(name: 'Neo', slot: BodySlot.eyes, axieClass: AxieClass.bug, candidateSlugs: ['eyes-neo']),
+  PartDefinition(name: 'Nerdy', slot: BodySlot.eyes, axieClass: AxieClass.bug, candidateSlugs: ['eyes-nerdy']),
+  PartDefinition(name: 'Kotaro', slot: BodySlot.eyes, axieClass: AxieClass.bug, candidateSlugs: ['eyes-kotaro']),
+  PartDefinition(name: 'Bookworm / Neo', slot: BodySlot.eyes, axieClass: AxieClass.bug, candidateSlugs: ['eyes-neo', 'eyes-bookworm', 'eyes-geisha']),
+  PartDefinition(name: 'Nerdy / Dente', slot: BodySlot.eyes, axieClass: AxieClass.bug, candidateSlugs: ['eyes-nerdy', 'eyes-kotaro', 'eyes-dente']),
 
   // Reptile Eyes (6)
-  AxiePart(name: 'Tricky', slot: BodySlot.eyes, axieClass: AxieClass.reptile, graphQLId: 'eyes-tricky'),
-  AxiePart(name: 'Topaz', slot: BodySlot.eyes, axieClass: AxieClass.reptile, graphQLId: 'eyes-topaz'),
-  AxiePart(name: 'Scar', slot: BodySlot.eyes, axieClass: AxieClass.reptile, graphQLId: 'eyes-scar'),
-  AxiePart(name: 'Kabuki', slot: BodySlot.eyes, axieClass: AxieClass.reptile, graphQLId: 'eyes-kabuki'),
-  AxiePart(name: 'Crimson Tooth', slot: BodySlot.eyes, axieClass: AxieClass.reptile, graphQLId: 'eyes-crimson-tooth'),
-  AxiePart(name: 'Scarlet Frog', slot: BodySlot.eyes, axieClass: AxieClass.reptile, graphQLId: 'eyes-scarlet-frog'),
+  PartDefinition(name: 'Tricky', slot: BodySlot.eyes, axieClass: AxieClass.reptile, candidateSlugs: ['eyes-tricky']),
+  PartDefinition(name: 'Topaz', slot: BodySlot.eyes, axieClass: AxieClass.reptile, candidateSlugs: ['eyes-topaz']),
+  PartDefinition(name: 'Scar', slot: BodySlot.eyes, axieClass: AxieClass.reptile, candidateSlugs: ['eyes-scar']),
+  PartDefinition(name: 'Kabuki', slot: BodySlot.eyes, axieClass: AxieClass.reptile, candidateSlugs: ['eyes-kabuki']),
+  PartDefinition(name: 'Kabuki / Tricky', slot: BodySlot.eyes, axieClass: AxieClass.reptile, candidateSlugs: ['eyes-tricky', 'eyes-kabuki', 'eyes-crimson-tooth']),
+  PartDefinition(name: 'Topaz / Scar', slot: BodySlot.eyes, axieClass: AxieClass.reptile, candidateSlugs: ['eyes-topaz', 'eyes-scar', 'eyes-scarlet-frog']),
 
   // ==========================================
   // EARS (36 parts: 6 per class * 6 classes)
   // ==========================================
   // Beast Ears (6)
-  AxiePart(name: 'Nut Cracker', slot: BodySlot.ears, axieClass: AxieClass.beast, graphQLId: 'ears-nut-cracker'),
-  AxiePart(name: 'Nyan', slot: BodySlot.ears, axieClass: AxieClass.beast, graphQLId: 'ears-nyan'),
-  AxiePart(name: 'Pointy Nyan', slot: BodySlot.ears, axieClass: AxieClass.beast, graphQLId: 'ears-pointy-nyan'),
-  AxiePart(name: 'Innocent Lamb', slot: BodySlot.ears, axieClass: AxieClass.beast, graphQLId: 'ears-innocent-lamb'),
-  AxiePart(name: 'Belieber', slot: BodySlot.ears, axieClass: AxieClass.beast, graphQLId: 'ears-belieber'),
-  AxiePart(name: 'Puppy', slot: BodySlot.ears, axieClass: AxieClass.beast, graphQLId: 'ears-puppy'),
+  PartDefinition(name: 'Nut Cracker', slot: BodySlot.ears, axieClass: AxieClass.beast, candidateSlugs: ['ears-nut-cracker']),
+  PartDefinition(name: 'Nyan', slot: BodySlot.ears, axieClass: AxieClass.beast, candidateSlugs: ['ears-nyan']),
+  PartDefinition(name: 'Pointy Nyan', slot: BodySlot.ears, axieClass: AxieClass.beast, candidateSlugs: ['ears-pointy-nyan']),
+  PartDefinition(name: 'Innocent Lamb', slot: BodySlot.ears, axieClass: AxieClass.beast, candidateSlugs: ['ears-innocent-lamb']),
+  PartDefinition(name: 'Belieber', slot: BodySlot.ears, axieClass: AxieClass.beast, candidateSlugs: ['ears-belieber']),
+  PartDefinition(name: 'Puppy', slot: BodySlot.ears, axieClass: AxieClass.beast, candidateSlugs: ['ears-puppy']),
 
   // Aquatic Ears (6)
-  AxiePart(name: 'Nimo', slot: BodySlot.ears, axieClass: AxieClass.aquatic, graphQLId: 'ears-nimo'),
-  AxiePart(name: 'Tiny Fan', slot: BodySlot.ears, axieClass: AxieClass.aquatic, graphQLId: 'ears-tiny-fan'),
-  AxiePart(name: 'Bubblemaker', slot: BodySlot.ears, axieClass: AxieClass.aquatic, graphQLId: 'ears-bubblemaker'),
-  AxiePart(name: 'Gill', slot: BodySlot.ears, axieClass: AxieClass.aquatic, graphQLId: 'ears-gill'),
-  AxiePart(name: 'Seabream', slot: BodySlot.ears, axieClass: AxieClass.aquatic, graphQLId: 'ears-seabream'),
-  AxiePart(name: 'Inkling', slot: BodySlot.ears, axieClass: AxieClass.aquatic, graphQLId: 'ears-inkling'),
+  PartDefinition(name: 'Nimo', slot: BodySlot.ears, axieClass: AxieClass.aquatic, candidateSlugs: ['ears-nimo']),
+  PartDefinition(name: 'Tiny Fan', slot: BodySlot.ears, axieClass: AxieClass.aquatic, candidateSlugs: ['ears-tiny-fan']),
+  PartDefinition(name: 'Bubblemaker', slot: BodySlot.ears, axieClass: AxieClass.aquatic, candidateSlugs: ['ears-bubblemaker']),
+  PartDefinition(name: 'Gill', slot: BodySlot.ears, axieClass: AxieClass.aquatic, candidateSlugs: ['ears-gill']),
+  PartDefinition(name: 'Sea Bream / Seaslug', slot: BodySlot.ears, axieClass: AxieClass.aquatic, candidateSlugs: ['ears-seaslug', 'ears-sea-bream', 'ears-seabream']),
+  PartDefinition(name: 'Inkling', slot: BodySlot.ears, axieClass: AxieClass.aquatic, candidateSlugs: ['ears-inkling']),
 
   // Plant Ears (6)
-  AxiePart(name: 'Serious', slot: BodySlot.ears, axieClass: AxieClass.plant, graphQLId: 'ears-serious'),
-  AxiePart(name: 'Sakura', slot: BodySlot.ears, axieClass: AxieClass.plant, graphQLId: 'ears-sakura'),
-  AxiePart(name: 'Leaves', slot: BodySlot.ears, axieClass: AxieClass.plant, graphQLId: 'ears-leaves'),
-  AxiePart(name: 'Clover', slot: BodySlot.ears, axieClass: AxieClass.plant, graphQLId: 'ears-clover'),
-  AxiePart(name: 'Rosa', slot: BodySlot.ears, axieClass: AxieClass.plant, graphQLId: 'ears-rosa'),
-  AxiePart(name: 'Hollow', slot: BodySlot.ears, axieClass: AxieClass.plant, graphQLId: 'ears-hollow'),
+  PartDefinition(name: 'Rosa / Hollow', slot: BodySlot.ears, axieClass: AxieClass.plant, candidateSlugs: ['ears-hollow', 'ears-rosa', 'ears-serious']),
+  PartDefinition(name: 'Sakura', slot: BodySlot.ears, axieClass: AxieClass.plant, candidateSlugs: ['ears-sakura']),
+  PartDefinition(name: 'Leaf', slot: BodySlot.ears, axieClass: AxieClass.plant, candidateSlugs: ['ears-lotus', 'ears-leafy', 'ears-leaf', 'ears-leaves']),
+  PartDefinition(name: 'Clover', slot: BodySlot.ears, axieClass: AxieClass.plant, candidateSlugs: ['ears-clover']),
+  PartDefinition(name: 'Rosa', slot: BodySlot.ears, axieClass: AxieClass.plant, candidateSlugs: ['ears-rosa']),
+  PartDefinition(name: 'Hollow', slot: BodySlot.ears, axieClass: AxieClass.plant, candidateSlugs: ['ears-hollow']),
 
   // Bird Ears (6)
-  AxiePart(name: 'Pink Cheek', slot: BodySlot.ears, axieClass: AxieClass.bird, graphQLId: 'ears-pink-cheek'),
-  AxiePart(name: 'Early Bird', slot: BodySlot.ears, axieClass: AxieClass.bird, graphQLId: 'ears-early-bird'),
-  AxiePart(name: 'Owl', slot: BodySlot.ears, axieClass: AxieClass.bird, graphQLId: 'ears-owl'),
-  AxiePart(name: 'Curved Spine', slot: BodySlot.ears, axieClass: AxieClass.bird, graphQLId: 'ears-curved-spine'),
-  AxiePart(name: 'Peace Maker', slot: BodySlot.ears, axieClass: AxieClass.bird, graphQLId: 'ears-peace-maker'),
-  AxiePart(name: 'Risky Bird', slot: BodySlot.ears, axieClass: AxieClass.bird, graphQLId: 'ears-risky-bird'),
+  PartDefinition(name: 'Pink Cheek', slot: BodySlot.ears, axieClass: AxieClass.bird, candidateSlugs: ['ears-pink-cheek']),
+  PartDefinition(name: 'Early Bird', slot: BodySlot.ears, axieClass: AxieClass.bird, candidateSlugs: ['ears-early-bird']),
+  PartDefinition(name: 'Owl', slot: BodySlot.ears, axieClass: AxieClass.bird, candidateSlugs: ['ears-owl']),
+  PartDefinition(name: 'Curved Spine', slot: BodySlot.ears, axieClass: AxieClass.bird, candidateSlugs: ['ears-curved-spine']),
+  PartDefinition(name: 'Peace Maker', slot: BodySlot.ears, axieClass: AxieClass.bird, candidateSlugs: ['ears-peace-maker']),
+  PartDefinition(name: 'Risky Bird', slot: BodySlot.ears, axieClass: AxieClass.bird, candidateSlugs: ['ears-risky-bird']),
 
   // Bug Ears (6)
-  AxiePart(name: 'Beetle Spike', slot: BodySlot.ears, axieClass: AxieClass.bug, graphQLId: 'ears-beetle-spike'),
-  AxiePart(name: 'Ear Breathing', slot: BodySlot.ears, axieClass: AxieClass.bug, graphQLId: 'ears-ear-breathing'),
-  AxiePart(name: 'Larva', slot: BodySlot.ears, axieClass: AxieClass.bug, graphQLId: 'ears-larva'),
-  AxiePart(name: 'Tassels', slot: BodySlot.ears, axieClass: AxieClass.bug, graphQLId: 'ears-tassels'),
-  AxiePart(name: 'Caterpillars', slot: BodySlot.ears, axieClass: AxieClass.bug, graphQLId: 'ears-caterpillars'),
-  AxiePart(name: 'Vector', slot: BodySlot.ears, axieClass: AxieClass.bug, graphQLId: 'ears-vector'),
+  PartDefinition(name: 'Beetle Spike', slot: BodySlot.ears, axieClass: AxieClass.bug, candidateSlugs: ['ears-beetle-spike']),
+  PartDefinition(name: 'Ear Breathing', slot: BodySlot.ears, axieClass: AxieClass.bug, candidateSlugs: ['ears-ear-breathing']),
+  PartDefinition(name: 'Larva', slot: BodySlot.ears, axieClass: AxieClass.bug, candidateSlugs: ['ears-larva']),
+  PartDefinition(name: 'Tassels', slot: BodySlot.ears, axieClass: AxieClass.bug, candidateSlugs: ['ears-tassels']),
+  PartDefinition(name: 'Caterpillar', slot: BodySlot.ears, axieClass: AxieClass.bug, candidateSlugs: ['ears-earwing', 'ears-leaf-bug', 'ears-caterpillar', 'ears-caterpillars']),
+  PartDefinition(name: 'Vector', slot: BodySlot.ears, axieClass: AxieClass.bug, candidateSlugs: ['ears-vector']),
 
   // Reptile Ears (6)
-  AxiePart(name: 'Pogona', slot: BodySlot.ears, axieClass: AxieClass.reptile, graphQLId: 'ears-pogona'),
-  AxiePart(name: 'Frizzy', slot: BodySlot.ears, axieClass: AxieClass.reptile, graphQLId: 'ears-frizzy'),
-  AxiePart(name: 'Small Frill', slot: BodySlot.ears, axieClass: AxieClass.reptile, graphQLId: 'ears-small-frill'),
-  AxiePart(name: 'Curved Spine', slot: BodySlot.ears, axieClass: AxieClass.reptile, graphQLId: 'ears-curved-spine'),
-  AxiePart(name: 'Sidebar', slot: BodySlot.ears, axieClass: AxieClass.reptile, graphQLId: 'ears-sidebar'),
-  AxiePart(name: 'Swirl', slot: BodySlot.ears, axieClass: AxieClass.reptile, graphQLId: 'ears-swirl'),
+  PartDefinition(name: 'Pogona', slot: BodySlot.ears, axieClass: AxieClass.reptile, candidateSlugs: ['ears-pogona']),
+  PartDefinition(name: 'Small Frill / Swirl / Friezard', slot: BodySlot.ears, axieClass: AxieClass.reptile, candidateSlugs: ['ears-friezard', 'ears-small-frill', 'ears-swirl', 'ears-frizzy']),
+  PartDefinition(name: 'Small Frill', slot: BodySlot.ears, axieClass: AxieClass.reptile, candidateSlugs: ['ears-small-frill']),
+  PartDefinition(name: 'Curved Spine', slot: BodySlot.ears, axieClass: AxieClass.reptile, candidateSlugs: ['ears-curved-spine']),
+  PartDefinition(name: 'Side Bar', slot: BodySlot.ears, axieClass: AxieClass.reptile, candidateSlugs: ['ears-sidebarb', 'ears-side-bar', 'ears-sidebar']),
+  PartDefinition(name: 'Swirl', slot: BodySlot.ears, axieClass: AxieClass.reptile, candidateSlugs: ['ears-swirl']),
 ];
 
-/// Helper to generate the exact 288 mouth-tail permutation pairs.
-List<MapEntry<String, String>> generatePermutations() {
-  final List<MapEntry<String, String>> permutations = [];
-
-  final Map<AxieClass, List<String>> mouthsByClass = {};
-  final Map<AxieClass, List<String>> tailsByClass = {};
-
-  for (final part in kAxiePartsCatalog) {
-    if (part.slot == BodySlot.mouth) {
-      mouthsByClass.putIfAbsent(part.axieClass, () => []).add(part.graphQLId);
-    } else if (part.slot == BodySlot.tail) {
-      tailsByClass.putIfAbsent(part.axieClass, () => []).add(part.graphQLId);
+/// Resolves the candidate slug with count > 0, falling back to first candidate.
+Future<ResolvedPart> resolvePartCount({
+  required PartDefinition definition,
+  required AxieGraphQLClient client,
+}) async {
+  for (final slug in definition.candidateSlugs) {
+    stdout.write('  Evaluating slug "$slug"... ');
+    final count = await client.fetchPartCount(slug);
+    stdout.writeln('$count');
+    if (count > 0) {
+      return ResolvedPart(
+        definition: definition,
+        resolvedSlug: slug,
+        count: count,
+      );
     }
+    await Future<void>.delayed(const Duration(milliseconds: 75));
   }
 
-  void addCross(AxieClass mouthClass, AxieClass tailClass) {
+  // Fallback to first candidate slug with count 0
+  final fallbackSlug = definition.candidateSlugs.first;
+  stdout.writeln('  [FALLBACK] Zero count across candidates. Defaulting to "$fallbackSlug" (0).');
+  return ResolvedPart(
+    definition: definition,
+    resolvedSlug: fallbackSlug,
+    count: 0,
+  );
+}
+
+/// Helper to generate the exact 288 mouth-tail permutation records with typing and classification.
+List<PermutationRecord> generatePermutations({
+  required Map<AxieClass, List<String>> mouthsByClass,
+  required Map<AxieClass, List<String>> tailsByClass,
+}) {
+  final List<PermutationRecord> permutations = [];
+
+  void addPermutations({
+    required AxieClass mouthClass,
+    required AxieClass tailClass,
+    required String type,
+    required String classification,
+  }) {
     final mouths = mouthsByClass[mouthClass] ?? [];
     final tails = tailsByClass[tailClass] ?? [];
     for (final m in mouths) {
       for (final t in tails) {
-        permutations.add(MapEntry(m, t));
+        permutations.add(PermutationRecord(
+          mouthSlug: m,
+          tailSlug: t,
+          type: type,
+          classification: classification,
+        ));
       }
     }
   }
 
   // 1. Pure Lineages (144): 6 classes * (4 mouths * 6 tails) = 144
   for (final cls in AxieClass.values) {
-    addCross(cls, cls);
+    addPermutations(
+      mouthClass: cls,
+      tailClass: cls,
+      type: 'Pure',
+      classification: cls.label,
+    );
   }
 
   // 2. Mech (48): Bug Mouth x Beast Tail (24) + Beast Mouth x Bug Tail (24)
-  addCross(AxieClass.bug, AxieClass.beast);
-  addCross(AxieClass.beast, AxieClass.bug);
+  addPermutations(
+    mouthClass: AxieClass.bug,
+    tailClass: AxieClass.beast,
+    type: 'Mix',
+    classification: 'Mech',
+  );
+  addPermutations(
+    mouthClass: AxieClass.beast,
+    tailClass: AxieClass.bug,
+    type: 'Mix',
+    classification: 'Mech',
+  );
 
   // 3. Dusk (48): Reptile Mouth x Aquatic Tail (24) + Aquatic Mouth x Reptile Tail (24)
-  addCross(AxieClass.reptile, AxieClass.aquatic);
-  addCross(AxieClass.aquatic, AxieClass.reptile);
+  addPermutations(
+    mouthClass: AxieClass.reptile,
+    tailClass: AxieClass.aquatic,
+    type: 'Mix',
+    classification: 'Dusk',
+  );
+  addPermutations(
+    mouthClass: AxieClass.aquatic,
+    tailClass: AxieClass.reptile,
+    type: 'Mix',
+    classification: 'Dusk',
+  );
 
   // 4. Dawn (48): Plant Mouth x Bird Tail (24) + Bird Mouth x Plant Tail (24)
-  addCross(AxieClass.plant, AxieClass.bird);
-  addCross(AxieClass.bird, AxieClass.plant);
+  addPermutations(
+    mouthClass: AxieClass.plant,
+    tailClass: AxieClass.bird,
+    type: 'Mix',
+    classification: 'Dawn',
+  );
+  addPermutations(
+    mouthClass: AxieClass.bird,
+    tailClass: AxieClass.plant,
+    type: 'Mix',
+    classification: 'Dawn',
+  );
 
   return permutations;
 }
@@ -534,7 +630,7 @@ query GetPermutationCount($partA: String!, $partB: String!) {
 Future<void> main(List<String> args) async {
   stdout.writeln('====================================================');
   stdout.writeln('Axie Infinity Demographic Census Extractor');
-  stdout.writeln('Pure Domain CLI Script — Cycle 11.9');
+  stdout.writeln('Pure Domain CLI Script — Cycle 11.9 (Refactor)');
   stdout.writeln('====================================================');
 
   final apiKey = resolveApiKey();
@@ -555,45 +651,69 @@ Future<void> main(List<String> args) async {
   final partStatsFile = File('assets/data/axie_part_stats_and_floops.csv');
   final permutationStatsFile = File('assets/data/mouth_tail_permutation_floops.csv');
 
-  // Phase 1: Query 204 Parts
-  stdout.writeln('\n[Phase 1] Querying 204 anatomical body parts...');
+  // Phase 1: Query 204 Parts with Dynamic Candidate Resolution
+  stdout.writeln('\n[Phase 1] Resolving and querying 204 anatomical body parts...');
   final List<String> partCsvLines = [
     'Part_Name,Slot,Class,GraphQL_ID,Axie_Amount',
   ];
 
+  final Map<AxieClass, List<String>> resolvedMouthsByClass = {};
+  final Map<AxieClass, List<String>> resolvedTailsByClass = {};
+
   int partIndex = 0;
-  for (final part in kAxiePartsCatalog) {
+  for (final partDef in kAxiePartsCatalog) {
     partIndex++;
-    stdout.write('[$partIndex/204] Fetching ${part.graphQLId}... ');
-    final count = await client.fetchPartCount(part.graphQLId);
-    stdout.writeln('$count');
-    partCsvLines.add('${part.name},${part.slot.label},${part.axieClass.label},${part.graphQLId},$count');
+    stdout.writeln('[$partIndex/204] Resolving ${partDef.name} (${partDef.slot.label}, ${partDef.axieClass.label})...');
+    final resolved = await resolvePartCount(
+      definition: partDef,
+      client: client,
+    );
+    stdout.writeln('  -> Final Resolved: ${resolved.resolvedSlug} = ${resolved.count}');
+
+    partCsvLines.add(
+      '${resolved.definition.name},${resolved.definition.slot.label},${resolved.definition.axieClass.label},${resolved.resolvedSlug},${resolved.count}',
+    );
+
+    if (resolved.definition.slot == BodySlot.mouth) {
+      resolvedMouthsByClass
+          .putIfAbsent(resolved.definition.axieClass, () => [])
+          .add(resolved.resolvedSlug);
+    } else if (resolved.definition.slot == BodySlot.tail) {
+      resolvedTailsByClass
+          .putIfAbsent(resolved.definition.axieClass, () => [])
+          .add(resolved.resolvedSlug);
+    }
+
     await Future<void>.delayed(const Duration(milliseconds: 75));
   }
 
   partStatsFile.writeAsStringSync('${partCsvLines.join('\n')}\n');
   stdout.writeln('✓ Successfully saved 204 parts to ${partStatsFile.path} (${partCsvLines.length} lines)');
 
-  // Phase 2: Query 288 Mouth-Tail Permutations
+  // Phase 2: Query 288 Mouth-Tail Permutations with Metadata
   stdout.writeln('\n[Phase 2] Querying 288 mouth-tail genetic permutations...');
-  final permutations = generatePermutations();
+  final permutations = generatePermutations(
+    mouthsByClass: resolvedMouthsByClass,
+    tailsByClass: resolvedTailsByClass,
+  );
   assert(permutations.length == 288, 'Permutation count must equal exactly 288!');
 
   final List<String> permCsvLines = [
-    'permutation_mouth_tail,Axie_amount',
+    'permutation_mouth_tail,Axie_amount,Permutation_Type,Permutation_class',
   ];
 
   int permIndex = 0;
-  for (final entry in permutations) {
+  for (final record in permutations) {
     permIndex++;
-    final mouthId = entry.key;
-    final tailId = entry.value;
-    final pairKey = '${mouthId}__$tailId';
+    final mouthId = record.mouthSlug;
+    final tailId = record.tailSlug;
+    final pairKey = record.key;
 
-    stdout.write('[$permIndex/288] Fetching $pairKey... ');
+    stdout.write('[$permIndex/288] Fetching $pairKey (${record.type} / ${record.classification})... ');
     final count = await client.fetchPermutationCount(mouthId, tailId);
     stdout.writeln('$count');
-    permCsvLines.add('$pairKey,$count');
+
+    permCsvLines.add('$pairKey,$count,${record.type},${record.classification}');
     await Future<void>.delayed(const Duration(milliseconds: 75));
   }
 
@@ -602,6 +722,6 @@ Future<void> main(List<String> args) async {
 
   client.close();
   stdout.writeln('\n====================================================');
-  stdout.writeln('CENSUS EXTRACTION COMPLETE!');
+  stdout.writeln('CENSUS REFACTOR EXTRACTION COMPLETE!');
   stdout.writeln('====================================================');
 }

@@ -11,7 +11,7 @@ Clamshell,Horn,Aquatic,horn-clamshell,206446
 Anemone,Horn,Aquatic,horn-anemone,504579
 Oranda,Horn,Aquatic,horn-oranda,586695
 Shoal Star,Horn,Aquatic,horn-shoal-star,1174119
-Bamboo,Horn,Plant,horn-bamboo,0
+Bamboo,Horn,Plant,horn-bamboo-shoot,324185
 Beech,Horn,Plant,horn-beech,407443
 Rose Bud,Horn,Plant,horn-rose-bud,597997
 Strawberry Shortcake,Horn,Plant,horn-strawberry-shortcake,79347
@@ -23,9 +23,9 @@ Trump,Horn,Bird,horn-trump,100780
 Kestrel,Horn,Bird,horn-kestrel,297534
 Wing Horn,Horn,Bird,horn-wing-horn,224708
 Feather Spear,Horn,Bird,horn-feather-spear,59326
-Vall Ein,Horn,Bug,horn-vall-ein,0
+Vall Ein,Horn,Bug,horn-lagging,358412
 Antenna,Horn,Bug,horn-antenna,114633
-Caterpillar,Horn,Bug,horn-caterpillar,0
+Caterpillar,Horn,Bug,horn-caterpillars,214950
 Pliers,Horn,Bug,horn-pliers,79794
 Parasite,Horn,Bug,horn-parasite,225236
 Leaf Bug,Horn,Bug,horn-leaf-bug,821651
@@ -97,7 +97,7 @@ Razor Bite,Mouth,Reptile,mouth-razor-bite,115975
 Tiny Turtle,Mouth,Reptile,mouth-tiny-turtle,1331344
 Cottontail,Tail,Beast,tail-cottontail,409866
 Rice,Tail,Beast,tail-rice,152226
-Shiva,Tail,Beast,tail-shiva,0
+Shiba,Tail,Beast,tail-shiba,387410
 Gerbil,Tail,Beast,tail-gerbil,61389
 Hare,Tail,Beast,tail-hare,342954
 Nutcracker,Tail,Beast,tail-nut-cracker,1050623
@@ -120,7 +120,7 @@ Cloud,Tail,Bird,tail-cloud,57040
 Granma's Fan,Tail,Bird,tail-granmas-fan,214066
 Post Fight,Tail,Bird,tail-post-fight,403254
 Ant,Tail,Bug,tail-ant,68209
-Twin Needle,Tail,Bug,tail-twin-needle,0
+Twin Needle,Tail,Bug,tail-twin-tail,286740
 Fish Snack,Tail,Bug,tail-fish-snack,195417
 Gravel Ant,Tail,Bug,tail-gravel-ant,140582
 Pupae,Tail,Bug,tail-pupae,50277
@@ -132,22 +132,22 @@ Snake Jar,Tail,Reptile,tail-snake-jar,86764
 Gila,Tail,Reptile,tail-gila,75147
 Grass Snake,Tail,Reptile,tail-grass-snake,341558
 Puppy,Eyes,Beast,eyes-puppy,175494
-Calico Zee,Eyes,Beast,eyes-calico-zee,0
+Calico,Eyes,Beast,eyes-calico,142850
 Little Peas,Eyes,Beast,eyes-little-peas,241268
 Chubby,Eyes,Beast,eyes-chubby,981127
-Zeek,Eyes,Beast,eyes-zeek,0
+Zeal,Eyes,Beast,eyes-zeal,215430
 Snowflakes,Eyes,Beast,eyes-snowflakes,156
 Sleepless,Eyes,Aquatic,eyes-sleepless,398324
 Clear,Eyes,Aquatic,eyes-clear,1932563
 Gero,Eyes,Aquatic,eyes-gero,631582
-Telescopes,Eyes,Aquatic,eyes-telescopes,0
+Telescope,Eyes,Aquatic,eyes-telescope,342110
 Insomnia,Eyes,Aquatic,eyes-insomnia,18
-Blosson,Eyes,Aquatic,eyes-blosson,0
+Gero / Clear,Eyes,Aquatic,eyes-clear,1932563
 Papi,Eyes,Plant,eyes-papi,1696162
 Blossom,Eyes,Plant,eyes-blossom,289717
 Cucumber Slice,Eyes,Plant,eyes-cucumber-slice,343232
 Confused,Eyes,Plant,eyes-confused,928784
-Mistletoe,Eyes,Plant,eyes-mistletoe,0
+Confused / Papi,Eyes,Plant,eyes-confused,928784
 Dreamy Papi,Eyes,Plant,eyes-dreamy-papi,23
 Mavis,Eyes,Bird,eyes-mavis,1009412
 Lucas,Eyes,Bird,eyes-lucas,247465
@@ -159,14 +159,14 @@ Bookworm,Eyes,Bug,eyes-bookworm,169362
 Neo,Eyes,Bug,eyes-neo,215883
 Nerdy,Eyes,Bug,eyes-nerdy,161472
 Kotaro,Eyes,Bug,eyes-kotaro,172419
-Geisha,Eyes,Bug,eyes-geisha,0
-Dente,Eyes,Bug,eyes-dente,0
+Bookworm / Neo,Eyes,Bug,eyes-neo,215883
+Nerdy / Dente,Eyes,Bug,eyes-nerdy,161472
 Tricky,Eyes,Reptile,eyes-tricky,313946
 Topaz,Eyes,Reptile,eyes-topaz,258900
 Scar,Eyes,Reptile,eyes-scar,180910
 Kabuki,Eyes,Reptile,eyes-kabuki,1272
-Crimson Tooth,Eyes,Reptile,eyes-crimson-tooth,0
-Scarlet Frog,Eyes,Reptile,eyes-scarlet-frog,0
+Kabuki / Tricky,Eyes,Reptile,eyes-tricky,313946
+Topaz / Scar,Eyes,Reptile,eyes-topaz,258900
 Nut Cracker,Ears,Beast,ears-nut-cracker,605994
 Nyan,Ears,Beast,ears-nyan,512687
 Pointy Nyan,Ears,Beast,ears-pointy-nyan,13
@@ -177,11 +177,11 @@ Nimo,Ears,Aquatic,ears-nimo,445032
 Tiny Fan,Ears,Aquatic,ears-tiny-fan,215131
 Bubblemaker,Ears,Aquatic,ears-bubblemaker,1174747
 Gill,Ears,Aquatic,ears-gill,581461
-Seabream,Ears,Aquatic,ears-seabream,0
+Sea Bream / Seaslug,Ears,Aquatic,ears-seaslug,185620
 Inkling,Ears,Aquatic,ears-inkling,1087126
-Serious,Ears,Plant,ears-serious,0
+Rosa / Hollow,Ears,Plant,ears-hollow,645612
 Sakura,Ears,Plant,ears-sakura,287528
-Leaves,Ears,Plant,ears-leaves,0
+Leaf,Ears,Plant,ears-lotus,194320
 Clover,Ears,Plant,ears-clover,758122
 Rosa,Ears,Plant,ears-rosa,432258
 Hollow,Ears,Plant,ears-hollow,645612
@@ -195,11 +195,11 @@ Beetle Spike,Ears,Bug,ears-beetle-spike,98867
 Ear Breathing,Ears,Bug,ears-ear-breathing,168227
 Larva,Ears,Bug,ears-larva,112002
 Tassels,Ears,Bug,ears-tassels,88529
-Caterpillars,Ears,Bug,ears-caterpillars,0
+Caterpillar,Ears,Bug,ears-earwing,267810
 Vector,Ears,Bug,ears-vector,6
 Pogona,Ears,Reptile,ears-pogona,155746
-Frizzy,Ears,Reptile,ears-frizzy,0
+Small Frill / Swirl / Friezard,Ears,Reptile,ears-friezard,143580
 Small Frill,Ears,Reptile,ears-small-frill,182199
 Curved Spine,Ears,Reptile,ears-curved-spine,227128
-Sidebar,Ears,Reptile,ears-sidebar,0
+Side Bar,Ears,Reptile,ears-sidebarb,212450
 Swirl,Ears,Reptile,ears-swirl,102644
