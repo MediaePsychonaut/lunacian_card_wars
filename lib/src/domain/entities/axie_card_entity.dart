@@ -2,7 +2,7 @@
 // [MODULE_NAME]: axie_card_entity.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
-// [INTENT]: In-memory Axie Card Model deserializing axpInfo level & Master Spec stats with Floop abilities.
+// [INTENT]: In-memory Axie Card Model deserializing axpInfo level & Master Spec stats with Floop abilities and stat conservation bias shifts.
 // [DEPENDENCIES]: combat/combat_enums.dart, combat/combat_card.dart, combat/floop_ability_entity.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
@@ -12,7 +12,7 @@ import 'combat/combat_card.dart';
 import 'combat/floop_ability_entity.dart';
 
 enum AxieElementalClass { beast, aquatic, plant, bird, bug, reptile, mech, dusk, dawn, unknown }
-enum FloopSource { mouth, tail }
+enum FloopSource { mouth, tail, secret }
 
 class AxieCardEntity implements CombatCard {
   @override
@@ -54,8 +54,11 @@ class AxieCardEntity implements CombatCard {
     this.floop,
   });
 
-  int get atk => baseAtk;
-  int get def => baseDef;
+  int get effectiveAtk => baseAtk + (floop?.atkMod ?? 0);
+  int get effectiveDef => baseDef + (floop?.defMod ?? 0);
+
+  int get atk => effectiveAtk;
+  int get def => effectiveDef;
   String get imageUrl => spriteUrl;
   String get className => axieClass.name.toUpperCase();
 

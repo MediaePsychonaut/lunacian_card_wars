@@ -1,0 +1,31 @@
+structure_id,name,landscape,mana_cost,base_hp,passive_effect_type,effect_value,scaling_formula,activation_trigger,target_scope,lore_description,card_art_asset_id
+str_01,Astral Fortress,rainbow,2,20,BUFF_DEF,4,NONE,PASSIVE,LANE_UNIT,Creature is this lane gets +4 Defense,art_str_astral_fortress
+str_02,Autoplucker,useless_swamp,3,15,DAMAGE_TRIGGER,5,NONE,ON_DESTROY,HERO,Deals 5 Damage to the opposing hero when a creature in this lane is destroyed,art_str_autoplucker
+str_03,Candy Igloo,nice_lands,2,18,SWAP_STATS,0,NONE,PASSIVE,LANE_UNIT,Creatures in this lane swap Attack and Defense,art_str_candy_igloo
+str_04,Cardboard Mansion,blue_plains,1,12,BUFF_DEF,4,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +2 Defense for each of your creatures on the field,art_str_cardboard_mansion
+str_05,Cave of Solitude,blue_plains,2,15,BUFF_DEF,5,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +5 Attack and +5 Defense for each of your empty lanes,art_str_cave_of_solitude
+str_06,Comfy Cave,blue_plains,2,16,HEAL_TRIGGER,2,SCALING_COUNT,START_OF_TURN,LANE_UNIT,Creature in this lane heals 2 damage for each creature you control at start of turn,art_str_comfy_cave
+str_07,Corn Castle,corn_fields,2,20,BUFF_ATK,2,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +2 Attack for each of your creatures on the field,art_str_corn_castle
+str_08,Corn Dome,corn_fields,2,12,BUFF_ATK,3,NONE,PASSIVE,LANE_UNIT,Creature in this lane gets +3 Attack,art_str_corn_dome
+str_09,Corn Parthenon,corn_fields,3,25,BUFF_ATK,2,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +2 Attack for each of your different landscapes,art_str_corn_parthenon
+str_10,Fruit Cake,nice_lands,2,24,BUFF_DEF,9,NONE,PASSIVE,LANE_UNIT,Creature in this lane gets +9 Defense,art_str_fruit_cake
+str_11,Funeral Home,useless_swamp,1,10,UTILITY,1,NONE,ON_DESTROY,LANE_UNIT,When creature in this lane is destroyed return it to your hand and send this building to the Discard Pile,art_str_funeral_home
+str_12,Ghost Castle,useless_swamp,3,22,BUFF_DEF,8,NONE,PASSIVE,LANE_UNIT,Creature in this lane gets +8 Attack and +8 Defense,art_str_ghost_castle
+str_13,Haunted Windmill,blue_plains,2,15,UTILITY,1,NONE,ON_FLOOP,LANE_UNIT,Gain 1 Magic Point When Creature in this lane uses a floop ability,art_str_haunted_windmill
+str_14,Mausoleum,useless_swamp,2,14,UTILITY,1,NONE,ON_DESTROY,LANE_UNIT,When creature in this lane is destroyed return it to your hand and send this building to The Discard Pile,art_str_mausoleum
+str_15,Nicelands Tower,nice_lands,2,20,HEAL_TRIGGER,5,NONE,START_OF_TURN,LANE_UNIT,Creature in this lane heals 5 damage at start of turn,art_str_nicelands_tower
+str_16,Obelisx of Vengeance,useless_swamp,2,16,DAMAGE_TRIGGER,4,NONE,ON_DESTROY,HERO,Deal 4 damage to the opposing hero when your creature in this lane is destroyed,art_str_obelisx_of_vengeance
+str_17,Palace of Bone,useless_swamp,2,14,DAMAGE_TRIGGER,5,NONE,ON_SUMMON,LANE_UNIT,Deal 5 damage to the opposing creature when a new creature is placed in this lane,art_str_palace_of_bone
+str_18,Puffy Castle,nice_lands,2,20,HEAL_TRIGGER,5,NONE,ON_DESTROY,HERO,Heal 5 damage from your hero when a creature in this lane is destroyed,art_str_puffy_castle
+str_19,Pyramidia,sandy_lands,2,18,BUFF_DEF,2,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +2 Defense for every card in your hand,art_str_pyramidia
+str_20,Sand Castle,sandy_lands,2,16,BUFF_DEF,4,NONE,PASSIVE,LANE_UNIT,Creature in this lane gets +4 Attack and +4 Defense,art_str_sand_castle
+str_21,Sand Pyramid,sandy_lands,2,15,HEAL_TRIGGER,5,NONE,PASSIVE,LANE_UNIT,Creature in this lane heals 5 damage when it destroys a creature,art_str_sand_pyramid
+str_22,Sand Sphinx,sandy_lands,3,25,BUFF_DEF,5,NONE,PASSIVE,LANE_UNIT,Creature in this lane takes 5 less damage when attacked,art_str_sand_sphinx
+str_23,School House,nice_lands,2,18,BUFF_DEF,5,NONE,ON_FLOOP,LANE_UNIT,Your creature in this lane gets +5 Defense when it uses a floop ability,art_str_school_house
+str_24,Shadow Pyramid,rainbow,3,22,UTILITY,1,NONE,PASSIVE,LANE_UNIT,Enemy may only place creatures Rarity of 3 or lower into this lane,art_str_shadow_pyramid
+str_25,Silo of Truth,corn_fields,2,15,BUFF_ATK,2,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +2 Attack for every card in your opponent's hand,art_str_silo_of_truth
+str_26,Spirit Tower,useless_swamp,2,16,DAMAGE_TRIGGER,5,NONE,ON_SUMMON,HERO,Deal 5 damage to the opposing hero when a new creature is placed in this lane,art_str_spirit_tower
+str_27,Stonehenge,blue_plains,3,20,UTILITY,1,NONE,PASSIVE,LANE_UNIT,Floop ability costs 1 less Magic Point for creature in this lane,art_str_stonehenge
+str_28,Sun Pyramid,sandy_lands,2,18,BUFF_ATK,4,NONE,ON_FLOOP,LANE_UNIT,Creature in this lane gets +4 Attack every time it uses a floop ability,art_str_sun_pyramid
+str_29,The Big Hen House,corn_fields,2,16,BUFF_DEF,4,NONE,PASSIVE,LANE_UNIT,Creature in this lane gets +4 Attack and +4 Defense,art_str_the_big_hen_house
+str_30,Woad Mobile Home,rainbow,1,14,BUFF_DEF,3,SCALING_COUNT,PASSIVE,LANE_UNIT,Creature in this lane gets +3 Defense for each of your creatures on the field,art_str_woad_mobile_home

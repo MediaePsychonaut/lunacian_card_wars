@@ -1,0 +1,50 @@
+spell_id,name,landscape_affinity,mana_cost,spell_type,effect_type,base_value,scaling_rule,target_scope,turn_duration,lore_description,card_art_asset_id
+spl_01,Ancient Psychic Tandem Blast,universal,3,GLOBAL,DESTROY,1,NONE,ALL_CREATURES,0,Destroy one of your creatures and an opposing creature. Also draw 1 card,art_spl_ancient_psychic_tandem_blast
+spl_02,Banana Butt,universal,1,TARGETED,DESTROY,1,NONE,SINGLE_CREATURE,0,Destroy one of your creatures and draw 1 card,art_spl_banana_butt
+spl_03,BlackHole Pendant,universal,2,GLOBAL,UTILITY,1,NONE,ALL_CREATURES,0,Reduce the Defense of ALL creatures by %50,art_spl_blackhole_pendant
+spl_04,Blood Transfusion,universal,2,TARGETED,DAMAGE,5,NONE,HERO,0,Deal 5 damage to the opposing Leader and heal your Leader 5 points,art_spl_blood_transfusion
+spl_05,Bone Wand,useless_swamp,1,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,0,Choose a Useless Swamp creature and attack the opposing creature in its lane,art_spl_bone_wand
+spl_06,Brief Power,universal,1,INSTANT,MANA_SURGE,2,NONE,PLAYER,1,Every card cast this turn costs 1 less Magic Point,art_spl_brief_power
+spl_07,Bubblegum Butt,nice_lands,2,INSTANT,DRAW,3,NONE,PLAYER,0,Draw 3 cards,art_spl_bubblegum_butt
+spl_08,Cerebral Bloodstorm,universal,3,TARGETED,DAMAGE,5,NONE,SINGLE_CREATURE,0,Choose an opposing creature and deal damage equal to its own attack,art_spl_cerebral_bloodstorm
+spl_09,Clairvoyant Daggerstorm,universal,2,TARGETED,DAMAGE,5,NONE,SINGLE_CREATURE,0,Choose an opposing creature and double the amount of damage on it,art_spl_clairvoyant_daggerstorm
+spl_10,Corn Scepter,corn_fields,1,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,0,Choose a Corn creature and attack the opposing creature in its lane,art_spl_corn_scepter
+spl_11,Cough Syrup,universal,1,TARGETED,SWAP_STATS,0,NONE,SINGLE_CREATURE,0,Choose one of your creatures and switch its Attack and Defense values,art_spl_cough_syrup
+spl_12,Crystal Ball,universal,1,INSTANT,DRAW,5,NONE,PLAYER,0,Shuffle your hand back into your deck and draw 5 new cards,art_spl_crystal_ball
+spl_13,Dark Portal,universal,2,TARGETED,UTILITY,1,NONE,LANE,0,Choose an opposing building and move it to an empty lane,art_spl_dark_portal
+spl_14,Door of Strength,universal,3,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,1,Opponent cannot summon creatures next turn,art_spl_door_of_strength
+spl_15,Falling Star,universal,2,INSTANT,MANA_SURGE,2,NONE,PLAYER,1,Opponent gets 2 less Magic Points next turn,art_spl_falling_star
+spl_16,Field of Nightmares,universal,1,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,1,Choose an opposing creature. It cannot use its floop ability next turn,art_spl_field_of_nightmares
+spl_17,Fountain of Forgiveness,universal,2,TARGETED,HEAL,5,NONE,SINGLE_CREATURE,0,Choose one of your damaged creatures and heal it equal to its Attack,art_spl_fountain_of_forgiveness
+spl_18,Grape Butt,universal,1,TARGETED,DESTROY,1,NONE,SINGLE_CREATURE,0,Destroy one of your Buildings and draw 1 card,art_spl_grape_butt
+spl_19,Hot Dog Rain,universal,2,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,1,Opponent cannot summon Buildings next turn,art_spl_hot_dog_rain
+spl_20,Incredible Egg,universal,2,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,0,Put a random creature from your deck into your hand,art_spl_incredible_egg
+spl_21,Kung Fu Power,universal,2,GLOBAL,DESTROY,1,NONE,ALL_CREATURES,0,Destroy all enemy creatures Rarity of 4 or higher,art_spl_kung_fu_power
+spl_22,Lonely Hearts,universal,2,GLOBAL,DESTROY,1,NONE,ALL_CREATURES,0,Destroys the lone creature on the opponent side of the board,art_spl_lonely_hearts
+spl_23,Magic Hot Dog Pie,universal,3,TARGETED,DAMAGE,10,NONE,HERO,0,Deal 10 damage to the opposing Leader and heal your Leader 10 points,art_spl_magic_hot_dog_pie
+spl_24,Pie Storm,nice_lands,2,GLOBAL,HEAL,5,NONE,ALL_CREATURES,0,Heal all creatures on the field (including opponents),art_spl_pie_storm
+spl_25,Portal to Nowhere,universal,2,GLOBAL,RETURN_HAND,1,NONE,ALL_CREATURES,0,Return all of your creatures on the field to your hand,art_spl_portal_to_nowhere
+spl_26,Psychic Tempest,universal,2,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,1,Opponent cannot cast spells next turn,art_spl_psychic_tempest
+spl_27,Puma Claw,blue_plains,1,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,0,Choose a Blue Plains creature and attack the opposing creature in its lane,art_spl_puma_claw
+spl_28,Scroll of Bad Breath,universal,2,INSTANT,RETURN_HAND,1,NONE,PLAYER,0,Return a Spell card from the Discard Pile to your hand,art_spl_scroll_of_bad_breath
+spl_29,Scroll of Fresh Breath,universal,1,INSTANT,RETURN_HAND,1,NONE,PLAYER,0,Return a Building card from the Discard Pile to your hand,art_spl_scroll_of_fresh_breath
+spl_30,Skull Juice,universal,2,TARGETED,SWAP_STATS,0,NONE,SINGLE_CREATURE,0,Choose one of your opponent's creatures and switch its Attack and Defense values,art_spl_skull_juice
+spl_31,Snake Eye Ring,universal,2,INSTANT,DRAW,1,COUNT_SCALED,PLAYER,0,Draw 1 card for each of your empty lanes,art_spl_snake_eye_ring
+spl_32,Spirit Torch,useless_swamp,2,TARGETED,UTILITY,1,NONE,LANE,1,Choose an opposing lane. No creature or building may be summoned on this lane next turn,art_spl_spirit_torch
+spl_33,Strawberry Butt,nice_lands,1,INSTANT,DRAW,2,NONE,PLAYER,0,Draw 2 cards,art_spl_strawberry_butt
+spl_34,Subliminal Strength,universal,2,GLOBAL,DESTROY,1,NONE,ALL_CREATURES,0,Destroy all enemy creatures Rarity of 3 or lower,art_spl_subliminal_strength
+spl_35,Super Hug,nice_lands,1,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,0,Choose a Nicelands creature and attack the opposing creature in its lane,art_spl_super_hug
+spl_36,Tax Reduction,universal,1,INSTANT,MANA_SURGE,2,NONE,PLAYER,1,All of your creatures FLOOP abilities cost 0 Magic Points this turn,art_spl_tax_reduction
+spl_37,Teleport,blue_plains,1,TARGETED,RETURN_HAND,1,NONE,SINGLE_CREATURE,0,Choose a creature and return it to your hand,art_spl_teleport
+spl_38,Throne of Doom,useless_swamp,1,INSTANT,DESTROY,1,NONE,PLAYER,0,Destroy any of your Creatures and gain 4 Magic Points,art_spl_throne_of_doom
+spl_39,Throne of Gloom,useless_swamp,1,INSTANT,DESTROY,1,NONE,PLAYER,0,Destroy any of your buildings and gain 4 Magic Points,art_spl_throne_of_gloom
+spl_40,Tome of Ankhs,sandy_lands,1,TARGETED,UTILITY,1,NONE,SINGLE_CREATURE,0,Choose a Sandy Lands creature and attack the opposing creature in its lane,art_spl_tome_of_ankhs
+spl_41,UFO Abduction,universal,1,TARGETED,UTILITY,1,NONE,LANE,0,Choose one of your buildings and move it to one of your empty lanes,art_spl_ufo_abduction
+spl_42,Ultimate Magic Hands,universal,2,TARGETED,RETURN_HAND,1,NONE,SINGLE_CREATURE,0,Choose an opposing creature and send it back to your opponent's hand,art_spl_ultimate_magic_hands
+spl_43,Unempty Coffin,universal,2,INSTANT,RETURN_HAND,1,NONE,PLAYER,0,Return a creature from the Discard Pile to your hand,art_spl_unempty_coffin
+spl_44,Volcano,sandy_lands,3,TARGETED,DESTROY,1,NONE,LANE,0,Choose a lane and destroy all Buildings and Creatures on it. (Players and Opponents),art_spl_volcano
+spl_45,Witch Way,universal,1,INSTANT,MANA_SURGE,2,NONE,PLAYER,0,Gain 1 Magic Point for every different landscape of the field,art_spl_witch_way
+spl_46,Wizard Migraine,universal,1,INSTANT,MANA_SURGE,2,NONE,PLAYER,0,Discard your hand and gain 4 Magic Points,art_spl_wizard_migraine
+spl_47,Wizard Rawk,universal,2,TARGETED,DAMAGE,5,NONE,SINGLE_CREATURE,0,Choose a creature and give it Attack equal to how much damage it has taken,art_spl_wizard_rawk
+spl_48,Woad Blood,universal,1,TARGETED,HEAL,5,NONE,SINGLE_CREATURE,0,Choose one of your creatures and heal all damage,art_spl_woad_blood
+spl_49,ZaZo's Magic Seeds,corn_fields,1,INSTANT,MANA_SURGE,2,COUNT_SCALED,PLAYER,0,Gain 1 Magic Point for each of your creatures on the field,art_spl_zazos_magic_seeds

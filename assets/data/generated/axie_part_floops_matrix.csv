@@ -1,0 +1,73 @@
+part_id,part_type,class,part_name,floop_id,floop_name,activation_mana_cost,atk_bias_shift,def_bias_shift,effect_type,base_value,scaling_formula,conditional_rule,target_scope,is_secret,secret_combo_req,archetype_tag,card_art_asset_id
+b_mouth_01,mouth,beast,Nutcracker,flp_b_mouth_01,Nutcracker Bite,1,5,-5,DAMAGE,15,BASE + (AXIE_MANA - 1) * 10,NONE,OPPOSING_LANE,0,NONE,Corn_Aggro,art_flp_nutcracker
+b_mouth_02,mouth,beast,Axie Kiss,flp_b_mouth_02,Death Kiss,2,10,-10,BUFF_ATK,12,BASE + (AXIE_MANA - 1) * 8,NONE,SELF,0,NONE,Corn_Aggro,art_flp_axie_kiss
+b_mouth_03,mouth,beast,Goda,flp_b_mouth_03,Piercing Howl,1,5,-5,DISCARD,10,NONE,NONE,OPPOSING_LANE,0,NONE,Corn_Aggro,art_flp_goda
+b_mouth_04,mouth,beast,Confident,flp_b_mouth_04,Self Assurance,1,0,0,BUFF_ATK,8,BASE + (AXIE_MANA - 1) * 5,NONE,SELF,0,NONE,Corn_Aggro,art_flp_confident
+aq_mouth_01,mouth,aqua,Lam,flp_aq_mouth_01,Angry Lam,1,5,-5,DAMAGE,14,BASE + (AXIE_MANA - 1) * 8,NONE,OPPOSING_LANE,0,NONE,Blue_Tempo,art_flp_lam
+aq_mouth_02,mouth,aqua,Risky Fish,flp_aq_mouth_02,Fish Hook,2,10,-10,DAMAGE,22,BASE + (AXIE_MANA - 1) * 12,NONE,OPPOSING_LANE,0,NONE,Blue_Tempo,art_flp_risky_fish
+aq_mouth_03,mouth,aqua,Piranha,flp_aq_mouth_03,Crimson Water,1,0,0,DAMAGE,10,NONE,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,0,NONE,Blue_Tempo,art_flp_piranha
+aq_mouth_04,mouth,aqua,Catfish,flp_aq_mouth_04,Swallow Whole,2,-5,5,HEAL,18,BASE + (AXIE_MANA - 1) * 10,NONE,SELF,0,NONE,Blue_Tempo,art_flp_catfish
+pl_mouth_01,mouth,plant,Serious,flp_pl_mouth_01,Vegetal Bite,1,-5,5,STEAL_MANA,1,NONE,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,0,NONE,Nice_Sustain,art_flp_serious
+pl_mouth_02,mouth,plant,Zigzag,flp_pl_mouth_02,Drain Bite,1,-5,5,HEAL,12,BASE + (AXIE_MANA - 1) * 6,NONE,SELF,0,NONE,Nice_Sustain,art_flp_zigzag
+pl_mouth_03,mouth,plant,Herbivore,flp_pl_mouth_03,Vegan Diet,2,-10,10,SHIELD,25,BASE + (AXIE_MANA - 1) * 15,NONE,SELF,0,NONE,Nice_Sustain,art_flp_herbivore
+pl_mouth_04,mouth,plant,Silence Whisper,flp_pl_mouth_04,Forest Breath,1,-5,5,HEAL,15,BASE + (AXIE_MANA - 1) * 8,NONE,ALLIED_LANE,0,NONE,Nice_Sustain,art_flp_silence_whisper
+bd_mouth_01,mouth,bird,Doubletalk,flp_bd_mouth_01,Soothing Song,1,0,0,SLEEP,1,NONE,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_doubletalk
+bd_mouth_02,mouth,bird,Peace Maker,flp_bd_mouth_02,Peace Treaty,1,-5,5,DEBUFF_ATK,8,BASE + (AXIE_MANA - 1) * 5,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_peace_maker
+bd_mouth_03,mouth,bird,Little Owl,flp_bd_mouth_03,Dark Swoop,2,15,-15,BURST_DAMAGE,28,BASE + (AXIE_MANA - 1) * 15,NONE,OPPOSING_HERO,0,NONE,Swamp_Backdoor,art_flp_little_owl
+bd_mouth_04,mouth,bird,Hungry Bird,flp_bd_mouth_04,Insectivore,1,5,-5,DAMAGE,12,BASE + (AXIE_MANA - 1) * 6,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_hungry_bird
+bg_mouth_01,mouth,bug,Mosquito,flp_bg_mouth_01,Blood Taste,1,0,0,HEAL,10,BASE + (AXIE_MANA - 1) * 5,NONE,SELF,0,NONE,Swamp_Disruption,art_flp_mosquito
+bg_mouth_02,mouth,bug,Cute Bunny,flp_bg_mouth_02,Terror Chomp,2,-5,5,FEAR,1,NONE,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_cute_bunny
+bg_mouth_03,mouth,bug,Square Teeth,flp_bg_mouth_03,Nut Cracking,1,10,-10,DAMAGE,16,BASE + (AXIE_MANA - 1) * 8,NONE,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_square_teeth
+bg_mouth_04,mouth,bug,Pincer,flp_bg_mouth_04,Surgical Pincer,1,5,-5,DISCARD,12,BASE + (AXIE_MANA - 1) * 6,NONE,ANY_LANE_ENEMY,0,NONE,Swamp_Disruption,art_flp_pincer
+rp_mouth_01,mouth,reptile,Toothless Bite,flp_rp_mouth_01,Sneaky Raid,1,-5,5,DEBUFF_ATK,10,BASE + (AXIE_MANA - 1) * 6,NONE,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_toothless_bite
+rp_mouth_02,mouth,reptile,Kotaro,flp_rp_mouth_02,Kotaro Bite,1,0,0,GAIN_MANA,1,NONE,TARGET_MANA <= AXIE_MANA,SELF,0,NONE,Sandy_Attrition,art_flp_kotaro
+rp_mouth_03,mouth,reptile,Razor Bite,flp_rp_mouth_03,Venom Fang,2,-5,5,POISON,2,BASE + (AXIE_MANA - 1) * 1,NONE,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_razor_bite
+rp_mouth_04,mouth,reptile,Tiny Turtle,flp_rp_mouth_04,Chomp,2,-10,10,STUN,1,NONE,NONE,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_tiny_turtle
+b_tail_01,tail,beast,Cottontail,flp_b_tail_01,Luna Absorb,0,0,0,GAIN_MANA,1,NONE,NONE,SELF,0,NONE,Corn_Aggro,art_flp_cottontail
+b_tail_02,tail,beast,Rice,flp_b_tail_02,Night Rice,1,-5,5,STEAL_MANA,1,NONE,NONE,OPPOSING_LANE,0,NONE,Corn_Aggro,art_flp_rice
+b_tail_03,tail,beast,Shiba,flp_b_tail_03,Shiba Strike,2,15,-15,DAMAGE,25,BASE + (AXIE_MANA - 1) * 12,NONE,OPPOSING_LANE,0,NONE,Corn_Aggro,art_flp_shiba
+b_tail_04,tail,beast,Gerbil,flp_b_tail_04,Gerbil Jump,1,0,0,SWAP_LANE,0,NONE,NONE,SELF,0,NONE,Corn_Aggro,art_flp_gerbil
+b_tail_05,tail,beast,Hare,flp_b_tail_05,Hare Rush,1,5,-5,DRAW,1,NONE,NONE,SELF,0,NONE,Corn_Aggro,art_flp_hare
+b_tail_06,tail,beast,Nutcracker,flp_b_tail_06,Nutcracker Smack,2,10,-10,DAMAGE,20,BASE + (AXIE_MANA - 1) * 10,NONE,OPPOSING_LANE,0,NONE,Corn_Aggro,art_flp_nutcracker_tail
+aq_tail_01,tail,aqua,Koi,flp_aq_tail_01,Upstream Swift,1,0,0,BUFF_SPEED,10,BASE + (AXIE_MANA - 1) * 5,NONE,SELF,0,NONE,Blue_Tempo,art_flp_koi
+aq_tail_02,tail,aqua,Nimo,flp_aq_tail_02,Tail Slap,0,0,0,GAIN_MANA,1,NONE,NONE,SELF,0,NONE,Blue_Tempo,art_flp_nimo
+aq_tail_03,tail,aqua,Tadpole,flp_aq_tail_03,Black Bubble,1,-5,5,DEBUFF_ATK,6,BASE + (AXIE_MANA - 1) * 4,NONE,OPPOSING_LANE,0,NONE,Blue_Tempo,art_flp_tadpole
+aq_tail_04,tail,aqua,Ranchu,flp_aq_tail_04,Water Spout,2,-5,5,DEBUFF_ATK,15,BASE + (AXIE_MANA - 1) * 8,NONE,ANY_LANE_ENEMY,0,NONE,Blue_Tempo,art_flp_ranchu
+aq_tail_05,tail,aqua,Navaga,flp_aq_tail_05,Ice Spear,1,5,-5,DAMAGE,12,BASE + (AXIE_MANA - 1) * 6,NONE,OPPOSING_LANE,0,NONE,Blue_Tempo,art_flp_navaga
+aq_tail_06,tail,aqua,Shrimp,flp_aq_tail_06,Chitin Jump,2,10,-10,BURST_DAMAGE,24,BASE + (AXIE_MANA - 1) * 12,NONE,OPPOSING_HERO,0,NONE,Blue_Tempo,art_flp_shrimp
+pl_tail_01,tail,plant,Carrot,flp_pl_tail_01,Carrot Hammer,1,-5,5,SHIELD,20,BASE + (AXIE_MANA - 1) * 10,NONE,SELF,0,NONE,Nice_Sustain,art_flp_carrot
+pl_tail_02,tail,plant,Cattail,flp_pl_tail_02,Cattail Slap,1,-5,5,DRAW,1,NONE,TARGET_MANA <= AXIE_MANA,SELF,0,NONE,Nice_Sustain,art_flp_cattail
+pl_tail_03,tail,plant,Hatsune,flp_pl_tail_03,Forest Glow,2,-10,10,SHIELD,28,BASE + (AXIE_MANA - 1) * 14,NONE,SELF,0,NONE,Nice_Sustain,art_flp_hatsune
+pl_tail_04,tail,plant,Yam,flp_pl_tail_04,Gas Unleash,1,-5,5,POISON,2,BASE + (AXIE_MANA - 1) * 1,NONE,OPPOSING_LANE,0,NONE,Nice_Sustain,art_flp_yam
+pl_tail_05,tail,plant,Potato Leaf,flp_pl_tail_05,Aqua Defense,1,-10,10,SHIELD,22,BASE + (AXIE_MANA - 1) * 10,NONE,SELF,0,NONE,Nice_Sustain,art_flp_potato_leaf
+pl_tail_06,tail,plant,Hot Butt,flp_pl_tail_06,Spicy Surprise,2,-5,5,DAMAGE,18,BASE + (AXIE_MANA - 1) * 8,NONE,OPPOSING_LANE,0,NONE,Nice_Sustain,art_flp_hot_butt
+bd_tail_01,tail,bird,Swallow,flp_bd_tail_01,Early Storm,1,5,-5,DAMAGE,14,BASE + (AXIE_MANA - 1) * 7,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_swallow
+bd_tail_02,tail,bird,Feather Fan,flp_bd_tail_02,Triple Feather,2,10,-10,DAMAGE,26,BASE + (AXIE_MANA - 1) * 14,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_feather_fan
+bd_tail_03,tail,bird,The Last One,flp_bd_tail_03,Risky Feather,2,15,-15,BURST_DAMAGE,30,BASE + (AXIE_MANA - 1) * 15,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_the_last_one
+bd_tail_04,tail,bird,Cloud,flp_bd_tail_04,Puffy Feather,1,0,0,SWAP_LANE,0,NONE,NONE,SELF,0,NONE,Swamp_Backdoor,art_flp_cloud
+bd_tail_05,tail,bird,Granma's Fan,flp_bd_tail_05,Cool Breeze,1,-5,5,DEBUFF_ATK,8,BASE + (AXIE_MANA - 1) * 4,NONE,OPPOSING_LANE,0,NONE,Swamp_Backdoor,art_flp_granmas_fan
+bd_tail_06,tail,bird,Post Fight,flp_bd_tail_06,All-out Shot,2,20,-20,BURST_DAMAGE,35,BASE + (AXIE_MANA - 1) * 18,NONE,OPPOSING_HERO,0,NONE,Swamp_Backdoor,art_flp_post_fight
+bg_tail_01,tail,bug,Ant,flp_bg_tail_01,Chemical Warfare,1,0,0,DISCARD,8,BASE + (AXIE_MANA - 1) * 4,NONE,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_ant
+bg_tail_02,tail,bug,Twin Needle,flp_bg_tail_02,Double Stab,2,10,-10,DAMAGE,24,BASE + (AXIE_MANA - 1) * 12,NONE,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_twin_needle
+bg_tail_03,tail,bug,Fish Snack,flp_bg_tail_03,Anesthetic Bait,1,-5,5,STUN,1,NONE,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_fish_snack
+bg_tail_04,tail,bug,Gravel Ant,flp_bg_tail_04,Sand Trap,2,-5,5,DISABLE_FLOP,1,NONE,NONE,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_gravel_ant
+bg_tail_05,tail,bug,Pupae,flp_bg_tail_05,Metamorphosis,1,-10,10,SHIELD,20,BASE + (AXIE_MANA - 1) * 10,NONE,SELF,0,NONE,Swamp_Disruption,art_flp_pupae
+bg_tail_06,tail,bug,Thorny Caterpillar,flp_bg_tail_06,Allergic React,2,0,0,DAMAGE,22,BASE + (AXIE_MANA - 1) * 10,NONE,OPPOSING_LANE,0,NONE,Swamp_Disruption,art_flp_thorny_caterpillar
+rp_tail_01,tail,reptile,Wall Gecko,flp_rp_tail_01,Critical Escape,1,-5,5,SHIELD,18,BASE + (AXIE_MANA - 1) * 8,NONE,SELF,0,NONE,Sandy_Attrition,art_flp_wall_gecko
+rp_tail_02,tail,reptile,Iguana,flp_rp_tail_02,Scale Dart,1,0,0,STEAL_MANA,1,NONE,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_iguana
+rp_tail_03,tail,reptile,Tiny Dino,flp_rp_tail_03,Tiny Stomp,2,5,-5,DAMAGE,20,BASE + (AXIE_MANA - 1) * 10,NONE,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_tiny_dino
+rp_tail_04,tail,reptile,Snake Jar,flp_rp_tail_04,Jar Armor,2,-10,10,SHIELD,26,BASE + (AXIE_MANA - 1) * 12,NONE,SELF,0,NONE,Sandy_Attrition,art_flp_snake_jar
+rp_tail_05,tail,reptile,Gila,flp_rp_tail_05,Neurotoxin,2,-5,5,POISON,3,BASE + (AXIE_MANA - 1) * 1,NONE,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_gila
+rp_tail_06,tail,reptile,Grass Snake,flp_rp_tail_06,Venom Spray,1,0,0,POISON,2,NONE,NONE,OPPOSING_LANE,0,NONE,Sandy_Attrition,art_flp_grass_snake
+sec_01,secret_combo,beast,Pure Beast Secret Combo,flp_sec_01,Savage Rampage,2,20,-20,DAMAGE,40,BASE + (AXIE_MANA - 1) * 25,NONE,OPPOSING_LANE,1,b_mouth_01+b_tail_01,Corn_Aggro,art_sec_savage_rampage
+sec_02,secret_combo,aqua,Pure Aqua Secret Combo,flp_sec_02,Tidal Vortex,1,-10,10,BOUNCE,1,NONE,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,1,aq_mouth_01+aq_tail_01,Blue_Tempo,art_sec_tidal_vortex
+sec_03,secret_combo,plant,Pure Plant Secret Combo,flp_sec_03,Yggdrasil Fortress,2,-25,25,SHIELD,50,BASE + (AXIE_MANA - 1) * 30,NONE,SELF,1,pl_mouth_01+pl_tail_01,Nice_Sustain,art_sec_yggdrasil_fortress
+sec_04,secret_combo,reptile,Pure Reptile Secret Combo,flp_sec_04,Gorgon Gaze,1,-15,15,DEBUFF_ATK,20,BASE + (AXIE_MANA - 1) * 10,TARGET_MANA <= AXIE_MANA,OPPOSING_LANE,1,rp_mouth_01+rp_tail_01,Sandy_Attrition,art_sec_gorgon_gaze
+sec_05,secret_combo,bug,Pure Bug Secret Combo,flp_sec_05,Swarm Havoc,1,10,-10,DISCARD,15,BASE + (AXIE_MANA - 1) * 10,NONE,ANY_LANE_ENEMY,1,bg_mouth_01+bg_tail_01,Swamp_Disruption,art_sec_swarm_havoc
+sec_06,secret_combo,bird,Pure Bird Secret Combo,flp_sec_06,Celestial Dive,2,30,-30,BURST_DAMAGE,45,BASE + (AXIE_MANA - 1) * 20,NONE,OPPOSING_HERO,1,bd_mouth_01+bd_tail_01,Swamp_Backdoor,art_sec_celestial_dive
+sec_07,secret_combo,mech,Hybrid Beast Bug Secret Combo,flp_sec_07,Primal Ravage,2,15,-15,DAMAGE,35,BASE + (AXIE_MANA - 1) * 20,NONE,OPPOSING_LANE,1,b_mouth_01+bg_tail_01,Melee_Carnage,art_sec_primal_ravage
+sec_08,secret_combo,mech,Hybrid Bug Beast Secret Combo,flp_sec_08,Parasitic Frenzy,1,10,-10,BUFF_ATK,20,BASE + (AXIE_MANA - 1) * 10,NONE,SELF,1,bg_mouth_01+b_tail_01,Disruptive_Aggro,art_sec_parasitic_frenzy
+sec_09,secret_combo,dusk,Hybrid Plant Reptile Secret Combo,flp_sec_09,Thorny Brambles,1,-20,20,THORNS_BUFF,100,NONE,NONE,SELF,1,pl_mouth_01+rp_tail_01,Control_Spikes,art_sec_thorny_brambles
+sec_10,secret_combo,dusk,Hybrid Reptile Plant Secret Combo,flp_sec_10,Noxious Spores,2,-10,10,POISON,3,BASE + (AXIE_MANA - 1) * 1,NONE,OPPOSING_LANE,1,rp_mouth_01+pl_tail_01,Control_Attrition,art_sec_noxious_spores
+sec_11,secret_combo,dawn,Hybrid Aqua Bird Secret Combo,flp_sec_11,Squall Ambush,1,0,0,SWAP_LANE,0,NONE,NONE,SELF,1,aq_mouth_01+bd_tail_01,Tempo_Speed,art_sec_squall_ambush
+sec_12,secret_combo,dawn,Hybrid Bird Aqua Secret Combo,flp_sec_12,Hydro Falcon,2,15,-15,DAMAGE,30,BASE + (AXIE_MANA - 1) * 15,NONE,OPPOSING_LANE,1,bd_mouth_01+aq_tail_01,Evasive_Strike,art_sec_hydro_falcon
