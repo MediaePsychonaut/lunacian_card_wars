@@ -7,6 +7,8 @@
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
+import 'dart:math';
+
 import 'combat/combat_enums.dart';
 import 'combat/combat_card.dart';
 import 'combat/floop_ability_entity.dart';
@@ -45,8 +47,8 @@ class AxieCardEntity implements CombatCard {
     required this.axieClass,
     required this.level,
     required this.manaCost,
-    required this.baseAtk,
-    required this.baseDef,
+    required int baseAtk,
+    required int baseDef,
     required this.initialPips,
     required this.maxPips,
     required this.mouthPartName,
@@ -59,13 +61,47 @@ class AxieCardEntity implements CombatCard {
     this.hornClass,
     this.backClass,
     this.numEvolvedParts = 0,
-  });
+  })  : baseAtk = baseAtk < 0 ? 0 : baseAtk,
+        baseDef = baseDef < 0 ? 0 : baseDef;
 
-  int get effectiveAtk => baseAtk + (floop?.atkMod ?? 0);
-  int get effectiveDef => baseDef + (floop?.defMod ?? 0);
+  int get effectiveAtk {
+    final rawAtk = baseAtk + (floop?.atkMod ?? 0);
+    final dMod = floop?.defMod ?? 0;
+    final aMod = floop?.atkMod ?? 0;
+    if (aMod == -dMod) {
+      if (aMod > 0) {
+        // Shifting DEF -> ATK: cannot shift more than available baseDef
+        final allowedShift = baseDef.clamp(0, aMod);
+        return max(0, baseAtk + allowedShift);
+      } else if (aMod < 0) {
+        // Shifting ATK -> DEF: cannot lose more than available baseAtk
+        final allowedLoss = baseAtk.clamp(0, -aMod);
+        return max(0, baseAtk - allowedLoss);
+      }
+    }
+    return max(0, rawAtk);
+  }
 
-  int get atk => effectiveAtk;
-  int get def => effectiveDef;
+  int get effectiveDef {
+    final rawDef = baseDef + (floop?.defMod ?? 0);
+    final dMod = floop?.defMod ?? 0;
+    final aMod = floop?.atkMod ?? 0;
+    if (aMod == -dMod) {
+      if (aMod > 0) {
+        // Shifting DEF -> ATK: cannot shift more than available baseDef
+        final allowedShift = baseDef.clamp(0, aMod);
+        return max(0, baseDef - allowedShift);
+      } else if (aMod < 0) {
+        // Shifting ATK -> DEF: cannot lose more than available baseAtk
+        final allowedGain = baseAtk.clamp(0, -aMod);
+        return max(0, baseDef + allowedGain);
+      }
+    }
+    return max(0, rawDef);
+  }
+
+  int get atk => max(0, effectiveAtk);
+  int get def => max(0, effectiveDef);
   String get imageUrl => spriteUrl;
   String get className => axieClass.name.toUpperCase();
 
@@ -108,8 +144,8 @@ class AxieCardEntity implements CombatCard {
 
     return copyWith(
       manaCost: newManaCost,
-      baseAtk: calibrated.atk,
-      baseDef: calibrated.def,
+      baseAtk: max(0, calibrated.atk),
+      baseDef: max(0, calibrated.def),
       numEvolvedParts: evolved,
     );
   }
@@ -142,8 +178,8 @@ class AxieCardEntity implements CombatCard {
       axieClass: axieClass ?? this.axieClass,
       level: level ?? this.level,
       manaCost: manaCost ?? this.manaCost,
-      baseAtk: baseAtk ?? this.baseAtk,
-      baseDef: baseDef ?? this.baseDef,
+      baseAtk: baseAtk != null ? max(0, baseAtk) : this.baseAtk,
+      baseDef: baseDef != null ? max(0, baseDef) : this.baseDef,
       initialPips: initialPips ?? this.initialPips,
       maxPips: maxPips ?? this.maxPips,
       mouthPartName: mouthPartName ?? this.mouthPartName,
@@ -193,8 +229,8 @@ class AxieCardEntity implements CombatCard {
 
     final level = (json['level'] as num?)?.toInt() ?? 1;
     final manaCost = (json['manaCost'] as num?)?.toInt() ?? 1;
-    final baseAtk = (json['baseAtk'] as num?)?.toInt() ?? 0;
-    final baseDef = (json['baseDef'] as num?)?.toInt() ?? 0;
+    final baseAtk = max(0, (json['baseAtk'] as num?)?.toInt() ?? 0);
+    final baseDef = max(0, (json['baseDef'] as num?)?.toInt() ?? 0);
     final initialPips = (json['initialPips'] as num?)?.toInt() ?? 0;
     final maxPips = (json['maxPips'] as num?)?.toInt() ?? 3;
     final mouthName = json['mouthPartName']?.toString() ?? 'Basic Bite';
@@ -331,8 +367,8 @@ class AxieCardEntity implements CombatCard {
       axieClass: resolvedClass,
       level: level,
       manaCost: manaCost,
-      baseAtk: calibrated.atk,
-      baseDef: calibrated.def,
+      baseAtk: max(0, calibrated.atk),
+      baseDef: max(0, calibrated.def),
       initialPips: initialPips,
       maxPips: 3,
       mouthPartName: mouthName,

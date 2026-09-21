@@ -23,6 +23,14 @@ class CalibratedAxieStats {
     required this.def,
     required this.ratioR,
   }) : assert(
+          atk >= 0,
+          'ATK cannot be less than 0: $atk',
+        ),
+       assert(
+          def >= 0,
+          'DEF cannot be less than 0: $def',
+        ),
+       assert(
           atk + def == bstTotal,
           'Total stat conservation invariant violated: atk ($atk) + def ($def) != bstTotal ($bstTotal)',
         );
@@ -137,8 +145,9 @@ class AxieStatCalibrator {
     final rawR = classRatio + hornBias - backBias + floopBias + statVariance;
     final ratioR = rawR.clamp(rMin, rMax);
 
-    final atk = (bstTotal * ratioR).round();
-    final def = bstTotal - atk;
+    final rawAtk = (bstTotal * ratioR).round();
+    final atk = rawAtk.clamp(0, bstTotal);
+    final def = (bstTotal - atk).clamp(0, bstTotal);
 
     return CalibratedAxieStats(
       bstTotal: bstTotal,

@@ -7,6 +7,8 @@
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
+import 'dart:math';
+
 import '../axie_card_entity.dart';
 import 'floop_ability_entity.dart';
 
@@ -31,9 +33,9 @@ class BoardUnitEntity {
     required this.axieId,
     required this.name,
     required this.axieClass,
-    required this.currentAtk,
-    required this.currentDef,
-    required this.maxDef,
+    required int currentAtk,
+    required int currentDef,
+    required int maxDef,
     required this.currentPips,
     required this.maxPips,
     required this.hasFlooped,
@@ -41,7 +43,9 @@ class BoardUnitEntity {
     required this.spriteUrl,
     required this.proxySpriteUrl,
     this.floop,
-  });
+  })  : currentAtk = currentAtk < 0 ? 0 : currentAtk,
+        currentDef = currentDef < 0 ? 0 : currentDef,
+        maxDef = maxDef < 0 ? 0 : maxDef;
 
   int get baseAtk => currentAtk;
   int get baseDef => maxDef;
@@ -70,9 +74,9 @@ class BoardUnitEntity {
       axieId: axieId ?? this.axieId,
       name: name ?? this.name,
       axieClass: axieClass ?? this.axieClass,
-      currentAtk: currentAtk ?? baseAtk ?? this.currentAtk,
-      currentDef: currentDef ?? this.currentDef,
-      maxDef: maxDef ?? baseDef ?? this.maxDef,
+      currentAtk: max(0, currentAtk ?? baseAtk ?? this.currentAtk),
+      currentDef: max(0, currentDef ?? this.currentDef),
+      maxDef: max(0, maxDef ?? baseDef ?? this.maxDef),
       currentPips: currentPips ?? this.currentPips,
       maxPips: maxPips ?? this.maxPips,
       hasFlooped: hasFlooped ?? this.hasFlooped,
@@ -89,9 +93,9 @@ class BoardUnitEntity {
       axieId: card.id,
       name: card.name,
       axieClass: card.axieClass,
-      currentAtk: card.atk,
-      currentDef: card.def,
-      maxDef: card.def,
+      currentAtk: max(0, card.atk),
+      currentDef: max(0, card.def),
+      maxDef: max(0, card.def),
       currentPips: card.initialPips,
       maxPips: card.maxPips,
       hasFlooped: false,

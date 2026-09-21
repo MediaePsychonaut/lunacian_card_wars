@@ -890,7 +890,7 @@ class CombatEngine {
                 }
               }
             } else {
-              final newDef = oppOccupant.currentDef - dmg;
+              final newDef = max(0, oppOccupant.currentDef - dmg);
               final damaged = oppOccupant.copyWith(currentDef: newDef);
               if (opponent == PlayerId.p1) {
                 laneSlotP1 = laneSlotP1.copyWith(occupant: damaged);
@@ -1272,7 +1272,7 @@ class CombatEngine {
             }
           } else {
             final dmgToUnit = max(0, p1Dmg - p2DefAura);
-            p2Unit = p2Unit.copyWith(currentDef: p2Unit.currentDef - dmgToUnit);
+            p2Unit = p2Unit.copyWith(currentDef: max(0, p2Unit.currentDef - dmgToUnit));
             clashLogs.add('[Clash Step 3 - Lane $i] P2 unit absorbed damage (DEF: ${p2Unit.currentDef}/${p2Unit.maxDef}, Aura absorbed: ${min(p1Dmg, p2DefAura)}).');
           }
         } else if (p2Bldg != null) {
@@ -1328,7 +1328,7 @@ class CombatEngine {
             }
           } else {
             final dmgToUnit = max(0, p2Dmg - p1DefAura);
-            p1Unit = p1Unit.copyWith(currentDef: p1Unit.currentDef - dmgToUnit);
+            p1Unit = p1Unit.copyWith(currentDef: max(0, p1Unit.currentDef - dmgToUnit));
             clashLogs.add('[Clash Step 3 - Lane $i] P1 unit absorbed damage (DEF: ${p1Unit.currentDef}/${p1Unit.maxDef}, Aura absorbed: ${min(p2Dmg, p1DefAura)}).');
           }
         } else if (p1Bldg != null) {

@@ -7,6 +7,8 @@
 // [ARCHITECTURE]: Stateless Presentation Component
 // ===============================================================================
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../../domain/entities/axie_card_entity.dart';
 import '../../domain/entities/combat/combat_enums.dart';
@@ -52,8 +54,8 @@ class CardWarsCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final classColor = _getClassColor(axie.classAffinity);
     final mana = customManaCost ?? axie.manaCost;
-    final attack = customAtk ?? axie.atk;
-    final defense = customDef ?? axie.def;
+    final attack = max(0, customAtk ?? axie.atk);
+    final defense = max(0, customDef ?? axie.def);
     final floop = axie.floop;
 
     return AspectRatio(

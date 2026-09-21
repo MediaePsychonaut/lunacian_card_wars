@@ -99,6 +99,117 @@ void main() {
       // Stat Conservation: baseAtk + baseDef == effectiveAtk + effectiveDef
       expect(axie.effectiveAtk + axie.effectiveDef, equals(axie.baseAtk + axie.baseDef));
     });
+
+    test('Critical Invariant: ATK and DEF can never be less than 0 even with extreme Floop bias shifts', () {
+      // 1. Extreme negative DEF shift on low-DEF creature (e.g. 1 Mana Cost Axie with 2 DEF and -10 shift)
+      const mouthFloop = FloopAbilityEntity(
+        id: 'flp_heavy_atk_bias',
+        name: 'Heavy Mouth Bias',
+        manaCost: 1,
+        description: 'Heavy attack shift',
+        targetRequirement: FloopTargetType.self,
+        effectType: FloopEffectType.buffAtk,
+        effectValue: 10,
+        atkMod: 10,
+        defMod: -10,
+      );
+
+      const fragileAxie = AxieCardEntity(
+        id: 'fragile_bird',
+        name: 'Fragile Bird',
+        axieClass: AxieElementalClass.bird,
+        level: 1,
+        manaCost: 1,
+        baseAtk: 7,
+        baseDef: 2, // Only 2 DEF available
+        initialPips: 0,
+        maxPips: 3,
+        mouthPartName: 'Peace Maker',
+        tailPartName: 'Post Fight',
+        selectedFloop: FloopSource.mouth,
+        spriteUrl: '',
+        proxySpriteUrl: '',
+        rawGenes: {},
+        floop: mouthFloop,
+      );
+
+      // DEF must be clamped at 0, cannot be -8!
+      expect(fragileAxie.effectiveDef, greaterThanOrEqualTo(0));
+      expect(fragileAxie.def, greaterThanOrEqualTo(0));
+      expect(fragileAxie.effectiveDef, equals(0));
+      // Available 2 DEF transferred to ATK: 7 + 2 = 9
+      expect(fragileAxie.effectiveAtk, equals(9));
+      expect(fragileAxie.atk, equals(9));
+      expect(fragileAxie.effectiveAtk + fragileAxie.effectiveDef, equals(fragileAxie.baseAtk + fragileAxie.baseDef));
+
+      // 2. Extreme negative ATK shift on low-ATK creature (e.g. 1 Mana Cost Axie with 2 ATK and -10 shift)
+      const tailFloop = FloopAbilityEntity(
+        id: 'flp_heavy_def_bias',
+        name: 'Heavy Tail Bias',
+        manaCost: 1,
+        description: 'Heavy defense shift',
+        targetRequirement: FloopTargetType.self,
+        effectType: FloopEffectType.restoreDef,
+        effectValue: 10,
+        atkMod: -10,
+        defMod: 10,
+      );
+
+      const tankAxie = AxieCardEntity(
+        id: 'tank_plant',
+        name: 'Tank Plant',
+        axieClass: AxieElementalClass.plant,
+        level: 1,
+        manaCost: 1,
+        baseAtk: 2, // Only 2 ATK available
+        baseDef: 7,
+        initialPips: 0,
+        maxPips: 3,
+        mouthPartName: 'Serious',
+        tailPartName: 'Carrot',
+        selectedFloop: FloopSource.tail,
+        spriteUrl: '',
+        proxySpriteUrl: '',
+        rawGenes: {},
+        floop: tailFloop,
+      );
+
+      // ATK must be clamped at 0, cannot be -8!
+      expect(tankAxie.effectiveAtk, greaterThanOrEqualTo(0));
+      expect(tankAxie.atk, greaterThanOrEqualTo(0));
+      expect(tankAxie.effectiveAtk, equals(0));
+      // Available 2 ATK transferred to DEF: 7 + 2 = 9
+      expect(tankAxie.effectiveDef, equals(9));
+      expect(tankAxie.def, equals(9));
+      expect(tankAxie.effectiveAtk + tankAxie.effectiveDef, equals(tankAxie.baseAtk + tankAxie.baseDef));
+
+      // 3. Entity construction and copyWith with negative arguments are clamped to 0
+      final clampedAxie = const AxieCardEntity(
+        id: 'clamped_axie',
+        name: 'Clamped Axie',
+        axieClass: AxieElementalClass.beast,
+        level: 1,
+        manaCost: 1,
+        baseAtk: -5,
+        baseDef: -10,
+        initialPips: 0,
+        maxPips: 3,
+        mouthPartName: 'Nutcracker',
+        tailPartName: 'Cottontail',
+        selectedFloop: FloopSource.mouth,
+        spriteUrl: '',
+        proxySpriteUrl: '',
+        rawGenes: {},
+      );
+      expect(clampedAxie.baseAtk, equals(0));
+      expect(clampedAxie.baseDef, equals(0));
+      expect(clampedAxie.atk, equals(0));
+      expect(clampedAxie.def, equals(0));
+
+      final copiedClamped = clampedAxie.copyWith(baseAtk: -15, baseDef: -20);
+      expect(copiedClamped.baseAtk, equals(0));
+      expect(copiedClamped.baseDef, equals(0));
+    });
   });
 
   group('Cycle 12: Master Datasets Integrity Tests', () {
