@@ -21,6 +21,9 @@ import '../../domain/entities/combat/spell_card_entity.dart';
 import '../../domain/entities/axie_card_entity.dart';
 import '../../domain/entities/combat/game_state.dart';
 import '../../domain/entities/combat/player_state_entity.dart';
+import '../../domain/entities/deck_entity.dart';
+import '../../domain/services/pure_deck_catalog.dart';
+import '../../data/repositories/player_decks_repository.dart';
 
 class ArenaView extends ConsumerWidget {
   const ArenaView({super.key});
@@ -49,11 +52,14 @@ class ArenaView extends ConsumerWidget {
                         _buildWinnerBanner(gameState.winner!),
                         const SizedBox(height: 10),
                       ],
+                      // Pre-Battle Matchup & Deck Selector Bar
+                      _buildMatchupDeckSelectorBar(context, ref, controller),
+                      const SizedBox(height: 12),
                       // 4-Lane Board Matrix Telemetry Table (Dual-Tile Topology + Tactical Buildings)
                       _buildBoardMatrix(gameState, controller),
                       const SizedBox(height: 12),
                       // Global Controls Bar
-                      _buildGlobalControls(gameState, controller),
+                      _buildGlobalControls(context, ref, gameState, controller),
                       const SizedBox(height: 12),
                       // Symmetrical Side-by-Side Dual-Player Cockpit
                       _buildDualCockpitContainer(context, gameState, controller),
@@ -179,6 +185,190 @@ class ArenaView extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMatchupDeckSelectorBar(
+    BuildContext context,
+    WidgetRef ref,
+    CombatEngineController controller,
+  ) {
+    final p1Deck = controller.activeP1Deck ?? PureDeckCatalog.beastPureDeck();
+    final p2Deck = controller.activeP2Deck ?? PureDeckCatalog.plantPureDeck();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C1810).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFFB400).withValues(alpha: 0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 750;
+
+          final p1Badge = _buildDeckMatchupSummary(
+            playerLabel: 'PLAYER 1 (YOU)',
+            deck: p1Deck,
+            accentColor: Colors.cyanAccent,
+          );
+
+          final p2Badge = _buildDeckMatchupSummary(
+            playerLabel: 'PLAYER 2 (OPPONENT)',
+            deck: p2Deck,
+            accentColor: Colors.deepOrangeAccent,
+          );
+
+          final actionBtn = ElevatedButton.icon(
+            icon: const Icon(Icons.style, size: 16, color: Colors.amberAccent),
+            label: const Text(
+              'CHOOSE DECKS / NEW MATCH',
+              style: TextStyle(
+                color: Colors.amberAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                letterSpacing: 0.8,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A1E00),
+              side: const BorderSide(color: Color(0xFFFFB400), width: 1.5),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => _showDeckSelectionModal(context, ref, controller),
+          );
+
+          if (isCompact) {
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: p1Badge),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('⚔️', style: TextStyle(fontSize: 16)),
+                    ),
+                    Expanded(child: p2Badge),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                actionBtn,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: p1Badge),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '⚔️ MATCHUP ⚔️',
+                      style: TextStyle(
+                        color: Colors.amberAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    actionBtn,
+                  ],
+                ),
+              ),
+              Expanded(child: p2Badge),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDeckMatchupSummary({
+    required String playerLabel,
+    required DeckEntity deck,
+    required Color accentColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                playerLabel,
+                style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 9, letterSpacing: 1.0),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${deck.cards.length} Cards',
+                  style: const TextStyle(color: Colors.white70, fontSize: 9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            deck.name,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 3,
+            runSpacing: 2,
+            children: deck.landscapes.map((affinity) {
+              final color = _affinityColor(affinity);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: color.withValues(alpha: 0.6)),
+                ),
+                child: Text(
+                  affinity.name.toUpperCase(),
+                  style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeckSelectionModal(
+    BuildContext context,
+    WidgetRef ref,
+    CombatEngineController controller,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _DeckSelectionDialog(controller: controller),
     );
   }
 
@@ -712,7 +902,12 @@ class ArenaView extends ConsumerWidget {
     );
   }
 
-  Widget _buildGlobalControls(GameState gameState, CombatEngineController controller) {
+  Widget _buildGlobalControls(
+    BuildContext context,
+    WidgetRef ref,
+    GameState gameState,
+    CombatEngineController controller,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -746,6 +941,17 @@ class ArenaView extends ConsumerWidget {
             spacing: 6,
             runSpacing: 4,
             children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.style, size: 13, color: Colors.amberAccent),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5A2A0A),
+                  foregroundColor: Colors.amberAccent,
+                  side: const BorderSide(color: Color(0xFFFFB400), width: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                ),
+                onPressed: () => _showDeckSelectionModal(context, ref, controller),
+                label: const Text('Choose Decks', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueGrey.shade800,
@@ -1701,6 +1907,356 @@ class ArenaView extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pre-Battle Symmetrical Deck Selection Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+class _DeckSelectionDialog extends ConsumerStatefulWidget {
+  final CombatEngineController controller;
+
+  const _DeckSelectionDialog({required this.controller});
+
+  @override
+  ConsumerState<_DeckSelectionDialog> createState() => _DeckSelectionDialogState();
+}
+
+class _DeckSelectionDialogState extends ConsumerState<_DeckSelectionDialog> {
+  late DeckEntity _selectedP1Deck;
+  late DeckEntity _selectedP2Deck;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedP1Deck = widget.controller.activeP1Deck ?? PureDeckCatalog.beastPureDeck();
+    _selectedP2Deck = widget.controller.activeP2Deck ?? PureDeckCatalog.plantPureDeck();
+  }
+
+  Color _affinityColor(BoardClassAffinity affinity) {
+    switch (affinity) {
+      case BoardClassAffinity.beast:
+        return const Color(0xFFFFB812);
+      case BoardClassAffinity.aquatic:
+        return const Color(0xFF00E5FF);
+      case BoardClassAffinity.plant:
+        return const Color(0xFF4CAF50);
+      case BoardClassAffinity.bug:
+        return const Color(0xFFE91E63);
+      case BoardClassAffinity.bird:
+        return const Color(0xFF9C27B0);
+      case BoardClassAffinity.reptile:
+        return const Color(0xFFFF5722);
+      case BoardClassAffinity.neutral:
+        return const Color(0xFF9E9E9E);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final availableDecks = ref.watch(availableDecksProvider);
+
+    return Dialog(
+      backgroundColor: const Color(0xFF23120B),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFFFB400), width: 2),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              children: [
+                const Icon(Icons.style, color: Colors.amberAccent, size: 24),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '⚔️ PRE-BATTLE DECK SELECTION',
+                        style: TextStyle(
+                          color: Colors.amberAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      Text(
+                        'Choose tactical decks for Player 1 and Player 2 before starting the FSM.',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white60),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFF8B5E00), height: 1),
+            const SizedBox(height: 12),
+
+            // Symmetrical Deck Columns
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 650;
+                  final p1Column = _buildDeckColumn(
+                    title: 'PLAYER 1 (YOU)',
+                    subtitle: 'Active: ${_selectedP1Deck.name}',
+                    accentColor: Colors.cyanAccent,
+                    selectedDeck: _selectedP1Deck,
+                    availableDecks: availableDecks,
+                    onSelect: (deck) => setState(() => _selectedP1Deck = deck),
+                  );
+                  final p2Column = _buildDeckColumn(
+                    title: 'PLAYER 2 (OPPONENT)',
+                    subtitle: 'Active: ${_selectedP2Deck.name}',
+                    accentColor: Colors.deepOrangeAccent,
+                    selectedDeck: _selectedP2Deck,
+                    availableDecks: availableDecks,
+                    onSelect: (deck) => setState(() => _selectedP2Deck = deck),
+                  );
+
+                  if (isNarrow) {
+                    return DefaultTabController(
+                      length: 2,
+                      child: Column(
+                        children: [
+                          const TabBar(
+                            indicatorColor: Colors.amberAccent,
+                            tabs: [
+                              Tab(text: 'Player 1 Deck'),
+                              Tab(text: 'Player 2 Deck'),
+                            ],
+                          ),
+                          Expanded(
+                            child: TabBarView(
+                              children: [p1Column, p2Column],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: p1Column),
+                      const VerticalDivider(color: Color(0xFF8B5E00), width: 24),
+                      Expanded(child: p2Column),
+                    ],
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 14),
+            const Divider(color: Color(0xFF8B5E00), height: 1),
+            const SizedBox(height: 14),
+
+            // Footer / Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                  label: const Text(
+                    'INITIALIZE BATTLE WITH SELECTED DECKS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB71C1C),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: Color(0xFFFFB400), width: 1.5),
+                    ),
+                    elevation: 6,
+                  ),
+                  onPressed: () {
+                    widget.controller.startBattleWithDecks(
+                      p1Deck: _selectedP1Deck,
+                      p2Deck: _selectedP2Deck,
+                    );
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF1E3A2F),
+                        content: Text(
+                          'Battle reloaded: ${_selectedP1Deck.name} vs ${_selectedP2Deck.name}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeckColumn({
+    required String title,
+    required String subtitle,
+    required Color accentColor,
+    required DeckEntity selectedDeck,
+    required List<DeckEntity> availableDecks,
+    required ValueChanged<DeckEntity> onSelect,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: accentColor),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.0),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+        const SizedBox(height: 8),
+        Expanded(
+          child: ListView.separated(
+            itemCount: availableDecks.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final deck = availableDecks[index];
+              final isChosen = deck.id == selectedDeck.id;
+
+              return InkWell(
+                onTap: () => onSelect(deck),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isChosen
+                        ? accentColor.withValues(alpha: 0.18)
+                        : Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isChosen ? accentColor : Colors.white.withValues(alpha: 0.12),
+                      width: isChosen ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isChosen ? Icons.radio_button_checked : Icons.radio_button_off,
+                            color: isChosen ? accentColor : Colors.white38,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              deck.name,
+                              style: TextStyle(
+                                color: isChosen ? Colors.white : Colors.white70,
+                                fontWeight: isChosen ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: deck.isPreset
+                                  ? Colors.amber.withValues(alpha: 0.2)
+                                  : Colors.green.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: deck.isPreset ? Colors.amberAccent : Colors.greenAccent,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              deck.isPreset ? 'PURE PRESET' : 'CUSTOM',
+                              style: TextStyle(
+                                color: deck.isPreset ? Colors.amberAccent : Colors.greenAccent,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            'Tiles: ',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9),
+                          ),
+                          Wrap(
+                            spacing: 3,
+                            children: deck.landscapes.map((affinity) {
+                              final color = _affinityColor(affinity);
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(2),
+                                  border: Border.all(color: color.withValues(alpha: 0.5), width: 0.8),
+                                ),
+                                child: Text(
+                                  affinity.name.toUpperCase(),
+                                  style: TextStyle(color: color, fontSize: 7.5, fontWeight: FontWeight.bold),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${deck.cards.length}/20 Cards',
+                            style: TextStyle(
+                              color: deck.cards.length == 20 ? Colors.greenAccent : Colors.orangeAccent,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

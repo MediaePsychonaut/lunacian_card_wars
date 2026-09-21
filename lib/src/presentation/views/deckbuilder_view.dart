@@ -14,8 +14,11 @@ import '../controllers/app_navigation_controller.dart';
 import '../controllers/deck_builder_controller.dart';
 import '../widgets/axie_creature_card_view.dart';
 import '../../data/repositories/card_catalog_repository.dart';
+import '../../data/repositories/floop_catalog_repository.dart';
+import '../../data/repositories/player_decks_repository.dart';
 import '../../domain/entities/axie_card_entity.dart';
 import '../../domain/entities/combat/combat_card.dart';
+import '../../domain/entities/combat/combat_enums.dart';
 import '../../domain/entities/combat/building_card_entity.dart';
 import '../../domain/entities/combat/spell_card_entity.dart';
 import 'widgets/atmospheric_battlefield_backdrop.dart';
@@ -39,11 +42,110 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
     );
   }
 
+  void _openDeckSelectorModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => const _DeckSelectorModal(),
+    );
+  }
+
+  void _promptSaveDeck(BuildContext context) {
+    final controller = ref.read(deckBuilderProvider.notifier);
+    final textCtrl = TextEditingController(text: controller.currentDeckName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161922),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Colors.amberAccent, width: 1.5),
+        ),
+        title: const Text('SAVE DECK TO VAULT', style: TextStyle(color: Colors.amberAccent, fontSize: 14, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Enter a name for your deck:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: textCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.black45,
+                hintText: 'e.g. My Beast Striker',
+                hintStyle: const TextStyle(color: Colors.white38),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700, foregroundColor: Colors.black),
+            onPressed: () async {
+              final name = textCtrl.text.trim();
+              Navigator.of(ctx).pop();
+              final success = await controller.saveActiveDeck(name.isNotEmpty ? name : 'Custom Deck');
+              if (!context.mounted) return;
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Deck "${controller.currentDeckName}" saved successfully!'),
+                    backgroundColor: Colors.teal.shade800,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(controller.lastErrorMessage ?? 'Could not save deck.'),
+                    backgroundColor: Colors.red.shade800,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openTileSelectorModal(BuildContext context, int slotIndex, Set<BoardClassAffinity> allowedClasses) {
+    if (allowedClasses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add Axie creatures to your deck first to unlock their class landscape tiles.'),
+          backgroundColor: Colors.amber,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _TileSelectorModal(
+        slotIndex: slotIndex,
+        allowedClasses: allowedClasses,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final availableAxies = ref.watch(fullAvailableAxiesProvider);
     final activeDeck = ref.watch(deckBuilderProvider);
     final deckController = ref.watch(deckBuilderProvider.notifier);
+    final activeLandscapes = ref.watch(deckBuilderLandscapesProvider);
+    final allowedTileClasses = deckController.axieClassesInDeck;
     final structuresAsync = ref.watch(structuresCatalogProvider);
     final spellsAsync = ref.watch(spellsCatalogProvider);
 
@@ -67,15 +169,19 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
                       label: const Text('Return to Menu', style: TextStyle(color: Colors.amber)),
                       onPressed: () => ref.read(appNavigationProvider.notifier).returnToMainMenu(),
                     ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'LUNACIAN DECK BUILDER',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
+                    const SizedBox(width: 8),
+                    // Deck Selector / Current Deck Button
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.folder_special, size: 14, color: Colors.amberAccent),
+                      label: Text(
+                        deckController.currentDeckName.toUpperCase(),
+                        style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 11),
                       ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.amberAccent, width: 1.2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      ),
+                      onPressed: () => _openDeckSelectorModal(context),
                     ),
                     const Spacer(),
                     Container(
@@ -98,14 +204,60 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.flash_on, size: 13, color: Colors.cyanAccent),
-                      label: const Text('Preset', style: TextStyle(color: Colors.cyanAccent, fontSize: 11)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.cyanAccent),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.save, size: 13, color: Colors.black),
+                      label: const Text('Save Deck', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                       ),
-                      onPressed: () => deckController.loadCanonicalPreset(),
+                      onPressed: activeDeck.length < 20 ? null : () => _promptSaveDeck(context),
+                    ),
+                    const SizedBox(width: 8),
+                    PopupMenuButton<AxieElementalClass>(
+                      icon: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.cyanAccent),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.flash_on, size: 13, color: Colors.cyanAccent),
+                            SizedBox(width: 4),
+                            Text('Presets', style: TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      color: const Color(0xFF161922),
+                      onSelected: (cls) => deckController.loadCanonicalPureDeck(cls),
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: AxieElementalClass.beast,
+                          child: Text('Pure Beast (Hay Aggro)', style: TextStyle(color: Color(0xFFFF9800), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        const PopupMenuItem(
+                          value: AxieElementalClass.aquatic,
+                          child: Text('Pure Aquatic (Blue Tempo)', style: TextStyle(color: Color(0xFF00BCD4), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        const PopupMenuItem(
+                          value: AxieElementalClass.plant,
+                          child: Text('Pure Plant (Green Sustain)', style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        const PopupMenuItem(
+                          value: AxieElementalClass.bird,
+                          child: Text('Pure Bird (Sky Backdoor)', style: TextStyle(color: Color(0xFFE91E63), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        const PopupMenuItem(
+                          value: AxieElementalClass.bug,
+                          child: Text('Pure Bug (Swamp Disruption)', style: TextStyle(color: Color(0xFFF44336), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        const PopupMenuItem(
+                          value: AxieElementalClass.reptile,
+                          child: Text('Pure Reptile (Sand Attrition)', style: TextStyle(color: Color(0xFF9C27B0), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
@@ -179,6 +331,11 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 4),
+
+              // 2.5 Landscape Tiles Bar (4 Baldosas Required)
+              _buildLandscapeTilesBar(activeLandscapes, allowedTileClasses, deckController),
 
               const SizedBox(height: 6),
 
@@ -854,7 +1011,7 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
                 ),
                 child: Text(
                   badgeLeft,
-                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
               Container(
@@ -867,7 +1024,7 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
                 ),
                 child: Text(
                   badgeRight,
-                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -875,6 +1032,162 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
         ],
       ),
     );
+  }
+
+  Widget _buildLandscapeTilesBar(
+    List<BoardClassAffinity> activeLandscapes,
+    Set<BoardClassAffinity> allowedClasses,
+    DeckBuilderController deckController,
+  ) {
+    final isValid = activeLandscapes.length == 4 &&
+        (allowedClasses.isEmpty || activeLandscapes.every((l) => allowedClasses.contains(l)));
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1B18),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isValid ? Colors.greenAccent.withValues(alpha: 0.6) : Colors.amber.withValues(alpha: 0.6),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.layers, color: Colors.amberAccent, size: 14),
+              const SizedBox(width: 6),
+              const Text(
+                'LANDSCAPE TILES (4 BALDOSAS)',
+                style: TextStyle(
+                  color: Colors.amberAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isValid ? Colors.green.shade900 : Colors.amber.shade900,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isValid ? '4 TILES VALID' : 'SELECT 4 TILES',
+                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Spacer(),
+              if (allowedClasses.isNotEmpty)
+                TextButton.icon(
+                  icon: const Icon(Icons.auto_awesome, size: 12, color: Colors.cyanAccent),
+                  label: const Text('Auto-Fill', style: TextStyle(color: Colors.cyanAccent, fontSize: 10)),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2)),
+                  onPressed: () => ref.read(deckBuilderLandscapesProvider.notifier).autoFill(allowedClasses),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: List.generate(4, (index) {
+              final affinity = index < activeLandscapes.length
+                  ? activeLandscapes[index]
+                  : (allowedClasses.isNotEmpty ? allowedClasses.first : BoardClassAffinity.beast);
+              final isClassAllowed = allowedClasses.isEmpty || allowedClasses.contains(affinity);
+              final color = _getClassColor(affinity);
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _openTileSelectorModal(context, index, allowedClasses),
+                  child: Container(
+                    margin: EdgeInsets.only(right: index < 3 ? 6 : 0),
+                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isClassAllowed ? color : Colors.redAccent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_getClassIcon(affinity), size: 12, color: color),
+                            const SizedBox(width: 4),
+                            Text(
+                              affinity.name.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 9.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Slot ${index + 1} • Tap to pick',
+                          style: TextStyle(
+                            color: isClassAllowed ? Colors.white54 : Colors.redAccent,
+                            fontSize: 7.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getClassColor(BoardClassAffinity affinity) {
+    switch (affinity) {
+      case BoardClassAffinity.beast:
+        return const Color(0xFFFF9800);
+      case BoardClassAffinity.aquatic:
+        return const Color(0xFF00BCD4);
+      case BoardClassAffinity.plant:
+        return const Color(0xFF4CAF50);
+      case BoardClassAffinity.bird:
+        return const Color(0xFFE91E63);
+      case BoardClassAffinity.bug:
+        return const Color(0xFFF44336);
+      case BoardClassAffinity.reptile:
+        return const Color(0xFF9C27B0);
+      case BoardClassAffinity.neutral:
+        return const Color(0xFF78909C);
+    }
+  }
+
+  IconData _getClassIcon(BoardClassAffinity affinity) {
+    switch (affinity) {
+      case BoardClassAffinity.beast:
+        return Icons.pets;
+      case BoardClassAffinity.aquatic:
+        return Icons.water_drop;
+      case BoardClassAffinity.plant:
+        return Icons.eco;
+      case BoardClassAffinity.bird:
+        return Icons.air;
+      case BoardClassAffinity.bug:
+        return Icons.bug_report;
+      case BoardClassAffinity.reptile:
+        return Icons.shield;
+      case BoardClassAffinity.neutral:
+        return Icons.circle;
+    }
   }
 }
 
@@ -903,9 +1216,19 @@ class _AxieConfigSheetState extends ConsumerState<_AxieConfigSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic calibrated preview
+    final floopRepo = ref.watch(floopCatalogRepositoryProvider);
+    final selectedPartName = _selectedFloop == FloopSource.mouth ? widget.axie.mouthPartName : widget.axie.tailPartName;
+    final selectedPartType = _selectedFloop == FloopSource.mouth ? 'mouth' : 'tail';
+    final floop = floopRepo.getFloopForPart(
+      partName: selectedPartName,
+      partType: selectedPartType,
+      axieClass: widget.axie.axieClass,
+    );
+
+    // Dynamic calibrated preview with authentic Floop
     final previewAxie = widget.axie.copyWith(
       selectedFloop: _selectedFloop,
+      floop: floop,
     ).recalculateForManaCost(_selectedMana);
 
     return Container(
@@ -1051,9 +1374,64 @@ class _AxieConfigSheetState extends ConsumerState<_AxieConfigSheet> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+
+                        // Authentic Floop Description Box
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF222736),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.5)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      floop.name.toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.amberAccent,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade900,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      'FLOOP ${floop.manaCost}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                floop.description,
+                                style: const TextStyle(color: Colors.white70, fontSize: 10, height: 1.2),
+                              ),
+                              if (floop.atkMod != 0 || floop.defMod != 0) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Bias: ${floop.atkMod >= 0 ? '+' : ''}${floop.atkMod} ATK / ${floop.defMod >= 0 ? '+' : ''}${floop.defMod} DEF',
+                                  style: const TextStyle(color: Colors.cyanAccent, fontSize: 9),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 10),
 
-                        // Stats Summary
+                        // Stats Summary (+2 pt font size increase: 12pt)
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -1065,12 +1443,12 @@ class _AxieConfigSheetState extends ConsumerState<_AxieConfigSheet> {
                             children: [
                               Text(
                                 'Proportional BST (9 × C): ${previewAxie.atk + previewAxie.def}',
-                                style: const TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'ATK: ${previewAxie.atk}  |  DEF: ${previewAxie.def}',
-                                style: const TextStyle(color: Colors.white, fontSize: 10),
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -1103,7 +1481,7 @@ class _AxieConfigSheetState extends ConsumerState<_AxieConfigSheet> {
                     Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Added ${widget.axie.name} (${_selectedMana}M) to deck!'),
+                        content: Text('Added ${widget.axie.name} (${_selectedMana}M) with [${floop.name}] to deck!'),
                         backgroundColor: Colors.teal.shade800,
                         duration: const Duration(seconds: 2),
                       ),
@@ -1114,7 +1492,7 @@ class _AxieConfigSheetState extends ConsumerState<_AxieConfigSheet> {
                       SnackBar(
                         content: Text(err),
                         backgroundColor: Colors.red.shade800,
-                        duration: const Duration(seconds: 2),
+                        duration: const Duration(seconds: 3),
                       ),
                     );
                   }
@@ -1125,5 +1503,260 @@ class _AxieConfigSheetState extends ConsumerState<_AxieConfigSheet> {
         ),
       ),
     );
+  }
+}
+
+class _DeckSelectorModal extends ConsumerWidget {
+  const _DeckSelectorModal();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allDecks = ref.watch(availableDecksProvider);
+    final pureDecks = allDecks.where((d) => d.isPreset).toList();
+    final customDecks = allDecks.where((d) => !d.isPreset).toList();
+    final deckController = ref.read(deckBuilderProvider.notifier);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161922),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+      ),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'LUNACIAN DECK VAULT',
+                    style: TextStyle(color: Colors.amberAccent, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Action: New Deck
+              OutlinedButton.icon(
+                icon: const Icon(Icons.add, color: Colors.amberAccent),
+                label: const Text('Create New Empty Deck', style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.amberAccent),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onPressed: () {
+                  deckController.clearDeck();
+                  Navigator.of(context).pop();
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Section: 6 Pure Decks
+              const Text(
+                '6 PURE ELEMENTAL DECKS (CANONICAL PRESETS)',
+                style: TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...pureDecks.map((d) {
+                return Card(
+                  color: const Color(0xFF222736),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.stars, color: Colors.amberAccent),
+                    title: Text(d.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    subtitle: Text(
+                      '${d.cards.length} Cards • 4 ${d.pureClass?.name.toUpperCase() ?? ""} Landscapes',
+                      style: const TextStyle(color: Colors.white54, fontSize: 10),
+                    ),
+                    trailing: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      ),
+                      onPressed: () {
+                        deckController.loadDeck(d);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Load', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    ),
+                  ),
+                );
+              }),
+
+              const SizedBox(height: 16),
+
+              // Section: Custom Decks (at least 10 slots supported)
+              Text(
+                'SAVED CUSTOM DECKS (${customDecks.length} / 10+ Slots)',
+                style: const TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              if (customDecks.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: Text('No custom decks saved yet. Build a deck and tap "Save Deck"!', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  ),
+                )
+              else
+                ...customDecks.map((d) {
+                  return Card(
+                    color: const Color(0xFF1E222D),
+                    margin: const EdgeInsets.only(bottom: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.style, color: Colors.tealAccent),
+                      title: Text(d.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                      subtitle: Text(
+                        '${d.cards.length} Cards • Landscapes: ${d.landscapes.map((l) => l.name.toUpperCase()).join(", ")}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 10),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.tealAccent.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            ),
+                            onPressed: () {
+                              deckController.loadDeck(d);
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('Load', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                            onPressed: () async {
+                              await ref.read(playerDecksRepositoryProvider).deleteCustomDeck(d.id);
+                              ref.invalidate(availableDecksProvider);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TileSelectorModal extends ConsumerWidget {
+  final int slotIndex;
+  final Set<BoardClassAffinity> allowedClasses;
+
+  const _TileSelectorModal({
+    required this.slotIndex,
+    required this.allowedClasses,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161922),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'SELECT TILE AFFINITY FOR SLOT ${slotIndex + 1}',
+              style: const TextStyle(color: Colors.amberAccent, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Per rule: Only elemental classes of Axies present in your deck may be selected.',
+              style: TextStyle(color: Colors.white54, fontSize: 10),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: allowedClasses.map((cls) {
+                return ActionChip(
+                  avatar: Icon(_getClassIcon(cls), size: 14, color: Colors.black),
+                  label: Text(
+                    cls.name.toUpperCase(),
+                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                  backgroundColor: _getClassColor(cls),
+                  onPressed: () {
+                    ref.read(deckBuilderLandscapesProvider.notifier).setLandscapeAt(slotIndex, cls, allowedClasses);
+                    Navigator.of(context).pop();
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getClassColor(BoardClassAffinity affinity) {
+    switch (affinity) {
+      case BoardClassAffinity.beast:
+        return const Color(0xFFFF9800);
+      case BoardClassAffinity.aquatic:
+        return const Color(0xFF00BCD4);
+      case BoardClassAffinity.plant:
+        return const Color(0xFF4CAF50);
+      case BoardClassAffinity.bird:
+        return const Color(0xFFE91E63);
+      case BoardClassAffinity.bug:
+        return const Color(0xFFF44336);
+      case BoardClassAffinity.reptile:
+        return const Color(0xFF9C27B0);
+      case BoardClassAffinity.neutral:
+        return const Color(0xFF78909C);
+    }
+  }
+
+  IconData _getClassIcon(BoardClassAffinity affinity) {
+    switch (affinity) {
+      case BoardClassAffinity.beast:
+        return Icons.pets;
+      case BoardClassAffinity.aquatic:
+        return Icons.water_drop;
+      case BoardClassAffinity.plant:
+        return Icons.eco;
+      case BoardClassAffinity.bird:
+        return Icons.air;
+      case BoardClassAffinity.bug:
+        return Icons.bug_report;
+      case BoardClassAffinity.reptile:
+        return Icons.shield;
+      case BoardClassAffinity.neutral:
+        return Icons.circle;
+    }
   }
 }

@@ -99,11 +99,9 @@ void main() {
     expect(find.textContaining('Deck: 16/20'), findsNWidgets(2));
     expect(find.textContaining('Hand: 4/7 (Max: 7)'), findsNWidgets(2));
 
-    // Verify dual tile badges are now populated
-    expect(find.textContaining('[P1: BEAST]'), findsOneWidget);
-    expect(find.textContaining('[P1: AQUATIC]'), findsOneWidget);
-    expect(find.textContaining('[P1: PLANT]'), findsOneWidget);
-    expect(find.textContaining('[P1: BUG]'), findsOneWidget);
+    // Verify dual tile badges are now populated with canonical Pure Beast (P1) and Pure Plant (P2)
+    expect(find.textContaining('[P1: BEAST]'), findsNWidgets(4));
+    expect(find.textContaining('[P2: PLANT]'), findsNWidgets(4));
 
     // 7. Verify AC-01 Visible Mulligan Opening Hand & Selection Controls
     expect(find.textContaining('Turn Zero: Opening Hand Mulligan'), findsWidgets);
@@ -115,7 +113,7 @@ void main() {
 
     // 8. Test selective mulligan toggle interaction for active player (P1)
     final firstCardFinder = find.byWidgetPredicate(
-      (widget) => widget is Text && widget.data != null && widget.data!.contains('🐾 [p1_'),
+      (widget) => widget is Text && widget.data != null && widget.data!.contains('🐾 [pure_beast_'),
     );
     expect(firstCardFinder, findsWidgets);
 

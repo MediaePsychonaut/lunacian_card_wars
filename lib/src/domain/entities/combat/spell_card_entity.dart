@@ -236,6 +236,47 @@ class SpellCardEntity extends Equatable implements CombatCard {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'axieClassAffinity': axieClassAffinity.name,
+        'manaCost': manaCost,
+        'spellType': spellType,
+        'targetType': targetType.name,
+        'effectType': effectType.name,
+        'rawEffectType': rawEffectType,
+        'effectValue': effectValue,
+        'scalingFormula': scalingFormula,
+        'targetScope': targetScope,
+        'castWindow': castWindow,
+        'rarity': rarity,
+        'description': description,
+        'cardArtAssetId': cardArtAssetId,
+      };
+
+  factory SpellCardEntity.fromJson(Map<String, dynamic> json) {
+    final effectTypeRaw = json['rawEffectType']?.toString() ?? json['effectType']?.toString() ?? 'DAMAGE';
+    final targetScopeRaw = json['targetScope']?.toString() ?? 'SINGLE_CREATURE';
+
+    return SpellCardEntity(
+      id: json['id'] as String? ?? 'spell_unknown',
+      name: json['name'] as String? ?? 'Spell',
+      axieClassAffinity: _parseAffinity(json['axieClassAffinity']?.toString() ?? 'neutral'),
+      manaCost: (json['manaCost'] as num?)?.toInt() ?? 1,
+      spellType: json['spellType'] as String? ?? 'TARGETED',
+      targetType: _parseTargetType(targetScopeRaw, effectTypeRaw),
+      effectType: _parseEffectType(effectTypeRaw),
+      rawEffectType: effectTypeRaw,
+      effectValue: (json['effectValue'] as num?)?.toInt() ?? 0,
+      scalingFormula: json['scalingFormula'] as String? ?? 'NONE',
+      targetScope: targetScopeRaw,
+      castWindow: json['castWindow'] as String? ?? 'ACTION_PHASE',
+      rarity: json['rarity'] as String? ?? 'COMMON',
+      description: json['description'] as String? ?? '',
+      cardArtAssetId: json['cardArtAssetId'] as String? ?? '',
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

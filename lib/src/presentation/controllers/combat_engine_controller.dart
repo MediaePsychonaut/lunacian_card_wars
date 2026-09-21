@@ -9,7 +9,6 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/services/combat_engine.dart';
-import '../../domain/services/axie_card_factory.dart';
 import '../../domain/entities/combat/game_state.dart';
 import '../../domain/entities/combat/game_action.dart';
 import '../../domain/entities/combat/combat_enums.dart';
@@ -17,6 +16,8 @@ import '../../domain/entities/combat/combat_card.dart';
 import '../../domain/entities/combat/building_card_entity.dart';
 import '../../domain/entities/combat/spell_card_entity.dart';
 import '../../domain/entities/axie_card_entity.dart';
+import '../../domain/entities/deck_entity.dart';
+import '../../domain/services/pure_deck_catalog.dart';
 
 final combatEngineProvider = NotifierProvider<CombatEngineController, GameState>(CombatEngineController.new);
 
@@ -38,19 +39,9 @@ class CombatEngineController extends Notifier<GameState> {
   String? get selectedCardId => selectedPlayer == PlayerId.p1 ? selectedP1CardId : selectedP2CardId;
   int get selectedLane => selectedPlayer == PlayerId.p1 ? selectedP1Lane : selectedP2Lane;
 
-  static const defaultP1Landscapes = [
-    BoardClassAffinity.beast,
-    BoardClassAffinity.aquatic,
-    BoardClassAffinity.plant,
-    BoardClassAffinity.bug,
-  ];
-
-  static const defaultP2Landscapes = [
-    BoardClassAffinity.plant,
-    BoardClassAffinity.aquatic,
-    BoardClassAffinity.beast,
-    BoardClassAffinity.bug,
-  ];
+  // Active Selected Decks for P1 and P2
+  DeckEntity? activeP1Deck;
+  DeckEntity? activeP2Deck;
 
   @override
   GameState build() {
@@ -62,11 +53,38 @@ class CombatEngineController extends Notifier<GameState> {
     p1MulliganSelection.clear();
     p2MulliganSelection.clear();
 
+    final p1 = activeP1Deck ?? PureDeckCatalog.beastPureDeck();
+    final p2 = activeP2Deck ?? PureDeckCatalog.plantPureDeck();
+    activeP1Deck = p1;
+    activeP2Deck = p2;
+
     return _engine.initializeGame(
-      p1Deck: AxieCardFactory.createCanonicalDeck('p1'),
-      p2Deck: AxieCardFactory.createCanonicalDeck('p2'),
-      p1Landscapes: defaultP1Landscapes,
-      p2Landscapes: defaultP2Landscapes,
+      p1Deck: p1.cards,
+      p2Deck: p2.cards,
+      p1Landscapes: p1.landscapes,
+      p2Landscapes: p2.landscapes,
+    );
+  }
+
+  void startBattleWithDecks({
+    required DeckEntity p1Deck,
+    required DeckEntity p2Deck,
+  }) {
+    activeP1Deck = p1Deck;
+    activeP2Deck = p2Deck;
+    selectedP1CardId = null;
+    selectedP1Lane = 0;
+    selectedP2CardId = null;
+    selectedP2Lane = 0;
+    selectedPlayer = PlayerId.p1;
+    p1MulliganSelection.clear();
+    p2MulliganSelection.clear();
+
+    state = _engine.initializeGame(
+      p1Deck: p1Deck.cards,
+      p2Deck: p2Deck.cards,
+      p1Landscapes: p1Deck.landscapes,
+      p2Landscapes: p2Deck.landscapes,
     );
   }
 
@@ -178,12 +196,13 @@ class CombatEngineController extends Notifier<GameState> {
     selectedP2Lane = 0;
     selectedPlayer = PlayerId.p1;
     p1MulliganSelection.clear();
-    p2MulliganSelection.clear();
+    final p1 = p1Deck != null ? null : (activeP1Deck ?? PureDeckCatalog.beastPureDeck());
+    final p2 = p2Deck != null ? null : (activeP2Deck ?? PureDeckCatalog.plantPureDeck());
     state = _engine.initializeGame(
-      p1Deck: p1Deck ?? AxieCardFactory.createCanonicalDeck('p1'),
-      p2Deck: p2Deck ?? AxieCardFactory.createCanonicalDeck('p2'),
-      p1Landscapes: p1Landscapes ?? defaultP1Landscapes,
-      p2Landscapes: p2Landscapes ?? defaultP2Landscapes,
+      p1Deck: p1Deck ?? p1!.cards,
+      p2Deck: p2Deck ?? p2!.cards,
+      p1Landscapes: p1Landscapes ?? p1!.landscapes,
+      p2Landscapes: p2Landscapes ?? p2!.landscapes,
     );
   }
 
@@ -385,11 +404,13 @@ class CombatEngineController extends Notifier<GameState> {
     selectedPlayer = PlayerId.p1;
     p1MulliganSelection.clear();
     p2MulliganSelection.clear();
+    final p1 = activeP1Deck ?? PureDeckCatalog.beastPureDeck();
+    final p2 = activeP2Deck ?? PureDeckCatalog.plantPureDeck();
     state = _engine.initializeGame(
-      p1Deck: AxieCardFactory.createCanonicalDeck('p1'),
-      p2Deck: AxieCardFactory.createCanonicalDeck('p2'),
-      p1Landscapes: defaultP1Landscapes,
-      p2Landscapes: defaultP2Landscapes,
+      p1Deck: p1.cards,
+      p2Deck: p2.cards,
+      p1Landscapes: p1.landscapes,
+      p2Landscapes: p2.landscapes,
     );
   }
 

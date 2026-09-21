@@ -203,7 +203,7 @@ class CardWarsCardView extends StatelessWidget {
                                     'FLOOP ${floop?.manaCost ?? 1}',
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 7.5,
+                                      fontSize: 9.5,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -214,7 +214,7 @@ class CardWarsCardView extends StatelessWidget {
                                     floop?.name ?? 'Basic Strike',
                                     style: const TextStyle(
                                       color: Colors.black87,
-                                      fontSize: 9,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     maxLines: 1,
@@ -229,7 +229,7 @@ class CardWarsCardView extends StatelessWidget {
                                 floop?.description ?? 'Standard creature ability.',
                                 style: const TextStyle(
                                   color: Colors.black87,
-                                  fontSize: 8,
+                                  fontSize: 10,
                                   height: 1.1,
                                 ),
                                 maxLines: 2,
@@ -263,14 +263,14 @@ class CardWarsCardView extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.flash_on, color: Colors.white, size: 11),
+                              const Icon(Icons.flash_on, color: Colors.white, size: 12),
                               const SizedBox(width: 2),
                               Text(
                                 '$attack',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 10,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -294,14 +294,14 @@ class CardWarsCardView extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.shield, color: Colors.white, size: 11),
+                              const Icon(Icons.shield, color: Colors.white, size: 12),
                               const SizedBox(width: 2),
                               Text(
                                 '$defense',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 10,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],

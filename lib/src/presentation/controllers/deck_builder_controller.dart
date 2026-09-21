@@ -2,42 +2,174 @@
 // [MODULE_NAME]: deck_builder_controller.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Presentation / Controllers
-// [INTENT]: Manages the active deck composition (20 to 25 cards), Axie calibration configurations, and universal support cards (Spells and Structures).
-// [DEPENDENCIES]: package:flutter_riverpod/flutter_riverpod.dart, ../../domain/entities/axie_card_entity.dart, ../../domain/entities/combat/combat_card.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/combat/spell_card_entity.dart, ../../domain/entities/combat/floop_ability_entity.dart, ../../domain/services/axie_card_factory.dart, axie_vault_controller.dart
+// [INTENT]: Manages active deck composition (20 to 25 cards), 4 landscape tiles selection restricted to deck Axie classes, max 2 floops per type enforcement, authentic Floop resolution from CSV, and deck persistence.
+// [DEPENDENCIES]: package:flutter_riverpod/flutter_riverpod.dart, ../../domain/entities/axie_card_entity.dart, ../../domain/entities/combat/combat_card.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/combat/spell_card_entity.dart, ../../domain/entities/combat/floop_ability_entity.dart, ../../domain/entities/combat/combat_enums.dart, ../../domain/entities/deck_entity.dart, ../../domain/services/axie_card_factory.dart, ../../domain/services/pure_deck_catalog.dart, ../../data/repositories/floop_catalog_repository.dart, ../../data/repositories/player_decks_repository.dart, axie_vault_controller.dart
 // [ARCHITECTURE]: Riverpod Notifier Pattern
 // ===============================================================================
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/repositories/floop_catalog_repository.dart';
+import '../../data/repositories/player_decks_repository.dart';
 import '../../domain/entities/axie_card_entity.dart';
-import '../../domain/entities/combat/combat_card.dart';
 import '../../domain/entities/combat/building_card_entity.dart';
-import '../../domain/entities/combat/spell_card_entity.dart';
+import '../../domain/entities/combat/combat_card.dart';
+import '../../domain/entities/combat/combat_enums.dart';
 import '../../domain/entities/combat/floop_ability_entity.dart';
-import '../../domain/services/axie_card_factory.dart';
+import '../../domain/entities/combat/spell_card_entity.dart';
+import '../../domain/entities/deck_entity.dart';
+import '../../domain/services/pure_deck_catalog.dart';
 import 'axie_vault_controller.dart';
 
 final starterAxiesListProvider = Provider<List<AxieCardEntity>>((ref) {
+  final floopRepo = ref.watch(floopCatalogRepositoryProvider);
+
+  final bubaFloop = floopRepo.getFloopForPart(partName: 'Nutcracker', partType: 'mouth', axieClass: AxieElementalClass.beast);
+  final olekFloop = floopRepo.getFloopForPart(partName: 'Serious', partType: 'mouth', axieClass: AxieElementalClass.plant);
+  final puffyFloop = floopRepo.getFloopForPart(partName: 'Lam', partType: 'mouth', axieClass: AxieElementalClass.aquatic);
+
   return [
-    AxieCardFactory.bubaStarter(),
-    AxieCardFactory.olekStarter(),
-    AxieCardFactory.puffyStarter(),
+    _bubaStarter(bubaFloop),
+    _olekStarter(olekFloop),
+    _puffyStarter(puffyFloop),
   ];
 });
+
+AxieCardEntity _bubaStarter(FloopAbilityEntity floop) {
+  return AxieCardEntity(
+    id: 'axie_buba',
+    name: 'Buba',
+    axieClass: AxieElementalClass.beast,
+    level: 25,
+    manaCost: 3,
+    baseAtk: 16,
+    baseDef: 11,
+    initialPips: 1,
+    maxPips: 3,
+    mouthPartName: 'Nutcracker',
+    tailPartName: 'Cottontail',
+    selectedFloop: FloopSource.mouth,
+    spriteUrl: 'https://assets.axieinfinity.com/axies/buba/axie/axie-full-transparent.png',
+    proxySpriteUrl: 'https://wsrv.nl/?url=buba',
+    rawGenes: const {'class': 'beast', 'name': 'Buba'},
+    floop: floop,
+  );
+}
+
+AxieCardEntity _olekStarter(FloopAbilityEntity floop) {
+  return AxieCardEntity(
+    id: 'axie_olek',
+    name: 'Olek',
+    axieClass: AxieElementalClass.plant,
+    level: 25,
+    manaCost: 3,
+    baseAtk: 9,
+    baseDef: 18,
+    initialPips: 0,
+    maxPips: 3,
+    mouthPartName: 'Serious',
+    tailPartName: 'Carrot',
+    selectedFloop: FloopSource.mouth,
+    spriteUrl: 'https://assets.axieinfinity.com/axies/olek/axie/axie-full-transparent.png',
+    proxySpriteUrl: 'https://wsrv.nl/?url=olek',
+    rawGenes: const {'class': 'plant', 'name': 'Olek'},
+    floop: floop,
+  );
+}
+
+AxieCardEntity _puffyStarter(FloopAbilityEntity floop) {
+  return AxieCardEntity(
+    id: 'axie_puffy',
+    name: 'Puffy',
+    axieClass: AxieElementalClass.aquatic,
+    level: 25,
+    manaCost: 3,
+    baseAtk: 14,
+    baseDef: 13,
+    initialPips: 0,
+    maxPips: 3,
+    mouthPartName: 'Lam',
+    tailPartName: 'Nimo',
+    selectedFloop: FloopSource.mouth,
+    spriteUrl: 'https://assets.axieinfinity.com/axies/puffy/axie/axie-full-transparent.png',
+    proxySpriteUrl: 'https://wsrv.nl/?url=puffy',
+    rawGenes: const {'class': 'aquatic', 'name': 'Puffy'},
+    floop: floop,
+  );
+}
 
 final fullAvailableAxiesProvider = Provider<List<AxieCardEntity>>((ref) {
   final starters = ref.watch(starterAxiesListProvider);
   final vaultAsync = ref.watch(savedAxiesVaultProvider);
   final vaultAxies = vaultAsync.valueOrNull ?? [];
+  final floopRepo = ref.watch(floopCatalogRepositoryProvider);
 
   final map = <String, AxieCardEntity>{};
   for (final a in starters) {
     map[a.id] = a;
   }
   for (final a in vaultAxies) {
-    map[a.id] = a;
+    // Ensure vault Axie has its real Floop loaded if missing
+    if (a.floop == null) {
+      final partName = a.selectedFloop == FloopSource.mouth ? a.mouthPartName : a.tailPartName;
+      final partType = a.selectedFloop == FloopSource.mouth ? 'mouth' : 'tail';
+      final resolvedFloop = floopRepo.getFloopForPart(
+        partName: partName,
+        partType: partType,
+        axieClass: a.axieClass,
+      );
+      map[a.id] = a.copyWith(floop: resolvedFloop);
+    } else {
+      map[a.id] = a;
+    }
   }
   return map.values.toList();
 });
+
+/// Manages the 4 Landscape Tiles configured for the active deck
+final deckBuilderLandscapesProvider =
+    NotifierProvider<DeckLandscapesController, List<BoardClassAffinity>>(() {
+  return DeckLandscapesController();
+});
+
+class DeckLandscapesController extends Notifier<List<BoardClassAffinity>> {
+  @override
+  List<BoardClassAffinity> build() {
+    return [
+      BoardClassAffinity.beast,
+      BoardClassAffinity.beast,
+      BoardClassAffinity.beast,
+      BoardClassAffinity.beast,
+    ];
+  }
+
+  void setLandscapes(List<BoardClassAffinity> landscapes) {
+    state = List.from(landscapes);
+  }
+
+  bool setLandscapeAt(int index, BoardClassAffinity affinity, Set<BoardClassAffinity> allowedClasses) {
+    if (index < 0 || index >= 4) return false;
+    if (allowedClasses.isNotEmpty && !allowedClasses.contains(affinity)) {
+      return false;
+    }
+    final next = List<BoardClassAffinity>.from(state);
+    while (next.length <= index) {
+      next.add(affinity);
+    }
+    next[index] = affinity;
+    state = next;
+    return true;
+  }
+
+  void autoFill(Set<BoardClassAffinity> allowedClasses) {
+    if (allowedClasses.isEmpty) return;
+    final classesList = allowedClasses.toList();
+    final newTiles = <BoardClassAffinity>[];
+    for (int i = 0; i < 4; i++) {
+      newTiles.add(classesList[i % classesList.length]);
+    }
+    state = newTiles;
+  }
+}
 
 final deckBuilderProvider = NotifierProvider<DeckBuilderController, List<CombatCard>>(() {
   return DeckBuilderController();
@@ -45,10 +177,25 @@ final deckBuilderProvider = NotifierProvider<DeckBuilderController, List<CombatC
 
 class DeckBuilderController extends Notifier<List<CombatCard>> {
   String? lastErrorMessage;
+  String currentDeckName = 'Custom Deck';
+  String? currentDeckId;
+
+  FloopCatalogRepository get _floopRepo => FloopCatalogRepository();
 
   @override
   List<CombatCard> build() {
     return [];
+  }
+
+  /// Axie Elemental Classes currently present in the deck
+  Set<BoardClassAffinity> get axieClassesInDeck {
+    final affinities = <BoardClassAffinity>{};
+    for (final c in state) {
+      if (c is AxieCardEntity) {
+        affinities.add(c.classAffinity);
+      }
+    }
+    return affinities;
   }
 
   bool isCardInDeck(String cardId) {
@@ -85,22 +232,39 @@ class DeckBuilderController extends Notifier<List<CombatCard>> {
         ? axie.id.substring(0, axie.id.indexOf('_deck_'))
         : axie.id;
 
-    // Floop resolution for selected source
-    FloopAbilityEntity? floop = axie.floop;
-    if (floopSource == FloopSource.tail && axie.tailPartName.isNotEmpty) {
-      floop = floop?.copyWith(
-            name: '${axie.tailPartName} Whip',
-            description: 'Deals direct damage or defensive counter.',
-          ) ??
-          FloopAbilityEntity(
-            id: 'floop_${rootId}_tail',
-            name: '${axie.tailPartName} Whip',
-            manaCost: 1,
-            description: 'Deals 4 damage to opposing lane.',
-            targetRequirement: FloopTargetType.laneEnemyUnit,
-            effectType: FloopEffectType.directDamage,
-            effectValue: 4,
-          );
+    // 1. Resolve authentic Floop ability from CSV matrix
+    final partName = floopSource == FloopSource.mouth ? axie.mouthPartName : axie.tailPartName;
+    final partType = floopSource == FloopSource.mouth ? 'mouth' : 'tail';
+    final floop = _floopRepo.getFloopForPart(
+      partName: partName,
+      partType: partType,
+      axieClass: axie.axieClass,
+    );
+
+    // 2. Rule: Maximum 2 copies of identical Floop ability in the same deck
+    final floopKey = floop.name.toLowerCase();
+    final existingFloops = state.where((c) {
+      if (c is! AxieCardEntity || c.floop == null) return false;
+      return c.floop!.name.toLowerCase() == floopKey;
+    }).length;
+
+    if (existingFloops >= 2) {
+      lastErrorMessage = 'Maximum 2 copies of Floop "${floop.name}" allowed in deck.';
+      return false;
+    }
+
+    // 3. Rule: Maximum 2 copies of identical Axie creature
+    final existingAxieCopies = state.where((c) {
+      if (c is! AxieCardEntity) return false;
+      final cRootId = c.id.contains('_deck_')
+          ? c.id.substring(0, c.id.indexOf('_deck_'))
+          : c.id;
+      return cRootId == rootId;
+    }).length;
+
+    if (existingAxieCopies >= 2) {
+      lastErrorMessage = 'Maximum 2 copies of "${axie.name}" allowed in deck.';
+      return false;
     }
 
     final configuredAxie = axie.copyWith(
@@ -109,24 +273,12 @@ class DeckBuilderController extends Notifier<List<CombatCard>> {
       floop: floop,
     ).recalculateForManaCost(manaCost);
 
-    // Rule: Maximum 2 copies of identical Axie with identical Floop
-    final floopKey = '${configuredAxie.selectedFloop.name}_${configuredAxie.floop?.id ?? "none"}';
-    final existingCopies = state.where((c) {
-      if (c is! AxieCardEntity) return false;
-      final cRootId = c.id.contains('_deck_')
-          ? c.id.substring(0, c.id.indexOf('_deck_'))
-          : c.id;
-      final cFloopKey = '${c.selectedFloop.name}_${c.floop?.id ?? "none"}';
-      return cRootId == rootId && cFloopKey == floopKey;
-    }).length;
-
-    if (existingCopies >= 2) {
-      lastErrorMessage = 'Maximum 2 copies with identical Floop allowed in deck.';
-      return false;
-    }
-
     lastErrorMessage = null;
     state = [...state, configuredAxie];
+
+    // Automatically align landscapes if needed
+    _checkAndSyncLandscapes();
+
     return true;
   }
 
@@ -196,15 +348,82 @@ class DeckBuilderController extends Notifier<List<CombatCard>> {
 
   void removeCardFromDeck(String cardInstanceId) {
     state = state.where((c) => c.id != cardInstanceId).toList();
+    _checkAndSyncLandscapes();
   }
 
   void clearDeck() {
     state = [];
+    currentDeckId = null;
+    currentDeckName = 'Custom Deck';
     lastErrorMessage = null;
   }
 
   void loadCanonicalPreset() {
-    state = AxieCardFactory.createCanonicalDeck('p1');
+    loadDeck(PureDeckCatalog.beastPureDeck());
+  }
+
+  void loadCanonicalPureDeck(AxieElementalClass axieClass) {
+    loadDeck(PureDeckCatalog.getDeckByClass(axieClass));
+  }
+
+  void loadDeck(DeckEntity deck) {
+    state = List.from(deck.cards);
+    currentDeckName = deck.name;
+    currentDeckId = deck.id;
     lastErrorMessage = null;
+    ref.read(deckBuilderLandscapesProvider.notifier).setLandscapes(deck.landscapes);
+  }
+
+  Future<bool> saveActiveDeck(String name) async {
+    final landscapes = ref.read(deckBuilderLandscapesProvider);
+    final allowed = axieClassesInDeck;
+
+    if (state.length < 20) {
+      lastErrorMessage = 'Deck must have at least 20 cards (currently ${state.length}).';
+      return false;
+    }
+    if (state.length > 25) {
+      lastErrorMessage = 'Deck exceeds maximum of 25 cards (currently ${state.length}).';
+      return false;
+    }
+    if (landscapes.length != 4) {
+      lastErrorMessage = 'Deck must have exactly 4 landscape tiles configured.';
+      return false;
+    }
+    if (allowed.isNotEmpty && !landscapes.every((l) => allowed.contains(l))) {
+      lastErrorMessage = 'Landscape tiles must strictly match the Axie classes in your deck.';
+      return false;
+    }
+
+    final deckId = currentDeckId ?? 'deck_${DateTime.now().millisecondsSinceEpoch}';
+    final deck = DeckEntity(
+      id: deckId,
+      name: name.trim().isNotEmpty ? name.trim() : currentDeckName,
+      cards: List.from(state),
+      landscapes: List.from(landscapes),
+      isPreset: false,
+    );
+
+    final repo = ref.read(playerDecksRepositoryProvider);
+    final success = await repo.saveCustomDeck(deck);
+    if (success) {
+      currentDeckId = deckId;
+      currentDeckName = deck.name;
+      lastErrorMessage = null;
+    } else {
+      lastErrorMessage = 'Failed to persist deck to storage.';
+    }
+    return success;
+  }
+
+  void _checkAndSyncLandscapes() {
+    final allowed = axieClassesInDeck;
+    if (allowed.isEmpty) return;
+
+    final currentLandscapes = ref.read(deckBuilderLandscapesProvider);
+    final hasInvalid = currentLandscapes.any((l) => !allowed.contains(l));
+    if (hasInvalid) {
+      ref.read(deckBuilderLandscapesProvider.notifier).autoFill(allowed);
+    }
   }
 }

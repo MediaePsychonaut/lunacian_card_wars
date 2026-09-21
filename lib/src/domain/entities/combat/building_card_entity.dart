@@ -195,4 +195,40 @@ class BuildingCardEntity implements CombatCard {
       cardArtAssetId: 'asset_struct_lunalog_bastion',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'axieClassAffinity': axieClassAffinity.name,
+        'manaCost': manaCost,
+        'maxHp': maxHp,
+        'armorReduction': armorReduction,
+        'effectType': effectType.name,
+        'rawEffectType': rawEffectType,
+        'effectValue': effectValue,
+        'scalingFormula': scalingFormula,
+        'activationTrigger': activationTrigger,
+        'targetScope': targetScope,
+        'loreDescription': loreDescription,
+        'cardArtAssetId': cardArtAssetId,
+      };
+
+  factory BuildingCardEntity.fromJson(Map<String, dynamic> json) {
+    return BuildingCardEntity(
+      id: json['id'] as String? ?? 'bldg_unknown',
+      name: json['name'] as String? ?? 'Structure',
+      axieClassAffinity: _parseAffinity(json['axieClassAffinity']?.toString() ?? 'neutral'),
+      manaCost: (json['manaCost'] as num?)?.toInt() ?? 1,
+      maxHp: (json['maxHp'] as num?)?.toInt() ?? 10,
+      armorReduction: (json['armorReduction'] as num?)?.toInt() ?? 0,
+      effectType: _parseEffectType(json['rawEffectType']?.toString() ?? json['effectType']?.toString() ?? 'UTILITY'),
+      rawEffectType: json['rawEffectType'] as String? ?? '',
+      effectValue: (json['effectValue'] as num?)?.toInt() ?? 0,
+      scalingFormula: json['scalingFormula'] as String? ?? 'NONE',
+      activationTrigger: json['activationTrigger'] as String? ?? 'PASSIVE',
+      targetScope: json['targetScope'] as String? ?? 'LANE_UNIT',
+      loreDescription: json['loreDescription'] as String? ?? '',
+      cardArtAssetId: json['cardArtAssetId'] as String? ?? '',
+    );
+  }
 }
