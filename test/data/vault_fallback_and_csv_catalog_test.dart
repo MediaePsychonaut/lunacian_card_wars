@@ -20,6 +20,27 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Cycle 15: Resilient Vault Fallback & CSV Ingestion Suite', () {
+    test('X-API-Key is securely loaded from secrets.env and sent in request headers', () async {
+      String? sentApiKey;
+      final mockClient = MockClient((request) async {
+        sentApiKey = request.headers['X-API-Key'];
+        return http.Response(
+          '{"data": {"axie": {"id": "11659521", "name": "Axie #11659521", "class": "Dusk", "parts": []}}}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final dataSource = AxieMarketplaceRemoteDataSource(client: mockClient);
+      final results = await dataSource.fetchAxiesRawByIds(['11659521']);
+
+      expect(results.length, equals(1));
+      expect(results.first['id'], equals('11659521'));
+      expect(sentApiKey, isNotNull);
+      expect(sentApiKey!.isNotEmpty, isTrue);
+      expect(dataSource.isOfflineFallbackActive, isFalse);
+    });
+
     test('AC-01: HTTP 401/403 triggers offline fallback resolving local snapshot', () async {
       final mockClient = MockClient((request) async {
         return http.Response(

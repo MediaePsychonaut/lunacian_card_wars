@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'axie_graphql_queries.dart';
+import 'secrets_loader.dart';
 
 class AxieNetworkException implements Exception {
   final String message;
@@ -28,19 +29,61 @@ abstract class IAxieRemoteDataSource {
 
 class AxieMarketplaceRemoteDataSource implements IAxieRemoteDataSource {
   final http.Client client;
+  final String? apiKeyOverride;
   static const String _endpoint = 'https://api-gateway.skymavis.com/graphql/axie-marketplace';
-  static const String _apiKey = String.fromEnvironment('SKY_MAVIS_API_KEY', defaultValue: '');
   static const JsonEncoder _prettyEncoder = JsonEncoder.withIndent('  ');
 
+  String _cachedApiKey = '';
   bool isOfflineFallbackActive = false;
 
-  AxieMarketplaceRemoteDataSource({required this.client});
+  AxieMarketplaceRemoteDataSource({required this.client, this.apiKeyOverride});
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'User-Agent': 'LunacianCardWars/1.0',
-    if (_apiKey.isNotEmpty) 'X-API-Key': _apiKey,
-  };
+  Future<String> _resolveApiKey() async {
+    if (apiKeyOverride != null && apiKeyOverride!.isNotEmpty) {
+      return apiKeyOverride!;
+    }
+    if (_cachedApiKey.isNotEmpty) return _cachedApiKey;
+
+    // 1. Compile-time constant passed via --dart-define or --dart-define-from-file
+    const compileTimeKey = String.fromEnvironment('SKY_MAVIS_API_KEY', defaultValue: '');
+    if (compileTimeKey.trim().isNotEmpty) {
+      _cachedApiKey = compileTimeKey.trim();
+      return _cachedApiKey;
+    }
+
+    // 2. Local native environment or gitignored secrets.env (via conditional loader)
+    final localKey = loadLocalSecretsFile();
+    if (localKey != null && localKey.isNotEmpty) {
+      _cachedApiKey = localKey;
+      return _cachedApiKey;
+    }
+
+    // 3. Bundled local gitignored asset (for web runtime)
+    try {
+      final assetContent = await rootBundle.loadString('assets/data/secrets.env');
+      for (final line in assetContent.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('SKY_MAVIS_API_KEY=')) {
+          final key = trimmed.substring('SKY_MAVIS_API_KEY='.length).trim();
+          if (key.isNotEmpty) {
+            _cachedApiKey = key;
+            return _cachedApiKey;
+          }
+        }
+      }
+    } catch (_) {}
+
+    return '';
+  }
+
+  Future<Map<String, String>> _buildHeaders() async {
+    final apiKey = await _resolveApiKey();
+    return {
+      'Content-Type': 'application/json',
+      'User-Agent': 'LunacianCardWars/1.0',
+      if (apiKey.isNotEmpty) 'X-API-Key': apiKey,
+    };
+  }
 
   @override
   Future<List<Map<String, dynamic>>> fetchAxiesByWallet(String walletAddress) async {
@@ -49,11 +92,12 @@ class AxieMarketplaceRemoteDataSource implements IAxieRemoteDataSource {
         ? '0x${sanitizedWallet.substring(6)}'
         : sanitizedWallet;
 
+    final headers = await _buildHeaders();
     http.Response response;
     try {
       response = await client.post(
         Uri.parse(_endpoint),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'query': AxieGraphQLQueries.getAxiesByOwner,
           'variables': {
@@ -128,11 +172,12 @@ class AxieMarketplaceRemoteDataSource implements IAxieRemoteDataSource {
   }
 
   Future<Map<String, dynamic>?> _fetchSingleAxie(String axieId) async {
+    final headers = await _buildHeaders();
     http.Response response;
     try {
       response = await client.post(
         Uri.parse(_endpoint),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'query': AxieGraphQLQueries.getAxieDetail,
           'variables': {'axieId': axieId},
