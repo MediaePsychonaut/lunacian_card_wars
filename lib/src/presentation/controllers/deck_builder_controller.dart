@@ -375,8 +375,8 @@ class DeckBuilderController extends Notifier<List<CombatCard>> {
   }
 
   Future<bool> saveActiveDeck(String name) async {
-    final landscapes = ref.read(deckBuilderLandscapesProvider);
     final allowed = axieClassesInDeck;
+    var landscapes = List<BoardClassAffinity>.from(ref.read(deckBuilderLandscapesProvider));
 
     if (state.length < 20) {
       lastErrorMessage = 'Deck must have at least 20 cards (currently ${state.length}).';
@@ -386,16 +386,31 @@ class DeckBuilderController extends Notifier<List<CombatCard>> {
       lastErrorMessage = 'Deck exceeds maximum of 25 cards (currently ${state.length}).';
       return false;
     }
-    if (landscapes.length != 4) {
-      lastErrorMessage = 'Deck must have exactly 4 landscape tiles configured.';
-      return false;
-    }
-    if (allowed.isNotEmpty && !landscapes.every((l) => allowed.contains(l))) {
-      lastErrorMessage = 'Landscape tiles must strictly match the Axie classes in your deck.';
-      return false;
+
+    // Auto-align landscapes to deck Axies if invalid or incomplete
+    if (allowed.isNotEmpty) {
+      final hasInvalid = landscapes.length != 4 || landscapes.any((l) => !allowed.contains(l));
+      if (hasInvalid) {
+        final allowedList = allowed.toList();
+        landscapes = List.generate(4, (i) => allowedList[i % allowedList.length]);
+        ref.read(deckBuilderLandscapesProvider.notifier).setLandscapes(landscapes);
+      }
+    } else if (landscapes.length != 4) {
+      landscapes = const [
+        BoardClassAffinity.beast,
+        BoardClassAffinity.beast,
+        BoardClassAffinity.beast,
+        BoardClassAffinity.beast,
+      ];
+      ref.read(deckBuilderLandscapesProvider.notifier).setLandscapes(landscapes);
     }
 
-    final deckId = currentDeckId ?? 'deck_${DateTime.now().millisecondsSinceEpoch}';
+    // A custom deck must not overwrite a preset ID
+    final isPreset = currentDeckId != null && currentDeckId!.startsWith('deck_pure_');
+    final deckId = (currentDeckId != null && !isPreset)
+        ? currentDeckId!
+        : 'custom_deck_${DateTime.now().millisecondsSinceEpoch}';
+
     final deck = DeckEntity(
       id: deckId,
       name: name.trim().isNotEmpty ? name.trim() : currentDeckName,
@@ -410,6 +425,7 @@ class DeckBuilderController extends Notifier<List<CombatCard>> {
       currentDeckId = deckId;
       currentDeckName = deck.name;
       lastErrorMessage = null;
+      ref.invalidate(availableDecksProvider);
     } else {
       lastErrorMessage = 'Failed to persist deck to storage.';
     }

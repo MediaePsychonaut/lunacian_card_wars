@@ -51,8 +51,8 @@ void main() {
     // 2. Verify Canonical 25 HP Hero indicators
     expect(find.textContaining('Hero HP: 25/25'), findsNWidgets(2));
 
-    // 3. Verify Initial 20-Card Tactical Deck counts & 7-card hand gauge (0 in hand, 20 in deck during tile placement)
-    expect(find.textContaining('Deck: 20/20'), findsNWidgets(2));
+    // 3. Verify Initial 25-Card Tactical Deck counts & 7-card hand gauge (0 in hand, 25 in deck during tile placement)
+    expect(find.textContaining('Deck: 25/25'), findsNWidgets(2));
     expect(find.textContaining('Hand: 0/7 (Max: 7)'), findsNWidgets(2));
 
     // 4. Verify 4-Lane Board Matrix Telemetry (Dual-Tile Topology + Buildings)
@@ -96,7 +96,7 @@ void main() {
 
     // Now all 8 tiles are placed, 4 cards drawn each, and phase is turnZeroMulligan
     expect(find.text('Phase: turnZeroMulligan'), findsOneWidget);
-    expect(find.textContaining('Deck: 16/20'), findsNWidgets(2));
+    expect(find.textContaining('Deck: 21/25'), findsNWidgets(2));
     expect(find.textContaining('Hand: 4/7 (Max: 7)'), findsNWidgets(2));
 
     // Verify dual tile badges are now populated with canonical Pure Beast (P1) and Pure Plant (P2)

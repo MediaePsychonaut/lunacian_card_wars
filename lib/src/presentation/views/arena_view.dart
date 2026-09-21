@@ -1187,7 +1187,7 @@ class ArenaView extends ConsumerWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
               ),
               Text(
-                'Deck: ${player.deck.length}/20',
+                'Deck: ${player.deck.length}/${player.deck.length + player.hand.length + player.graveyard.length}',
                 style: const TextStyle(color: Colors.white70, fontSize: 11),
               ),
               Text(

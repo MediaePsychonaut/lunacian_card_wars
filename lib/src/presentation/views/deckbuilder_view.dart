@@ -21,6 +21,8 @@ import '../../domain/entities/combat/combat_card.dart';
 import '../../domain/entities/combat/combat_enums.dart';
 import '../../domain/entities/combat/building_card_entity.dart';
 import '../../domain/entities/combat/spell_card_entity.dart';
+import '../../domain/services/pure_deck_catalog.dart';
+import '../controllers/combat_engine_controller.dart';
 import 'widgets/atmospheric_battlefield_backdrop.dart';
 
 class DeckbuilderView extends ConsumerStatefulWidget {
@@ -97,8 +99,24 @@ class _DeckbuilderViewState extends ConsumerState<DeckbuilderView> {
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Deck "${controller.currentDeckName}" saved successfully!'),
+                    content: Text('Deck "${controller.currentDeckName}" saved to Vault!'),
                     backgroundColor: Colors.teal.shade800,
+                    duration: const Duration(seconds: 4),
+                    action: SnackBarAction(
+                      label: 'BATTLE NOW',
+                      textColor: Colors.amberAccent,
+                      onPressed: () {
+                        final savedDeck = ref.read(availableDecksProvider).firstWhere(
+                          (d) => d.id == controller.currentDeckId,
+                          orElse: () => PureDeckCatalog.beastPureDeck(),
+                        );
+                        ref.read(combatEngineProvider.notifier).startBattleWithDecks(
+                          p1Deck: savedDeck,
+                          p2Deck: PureDeckCatalog.plantPureDeck(),
+                        );
+                        ref.read(appNavigationProvider.notifier).navigateTo(AppScreenState.play);
+                      },
+                    ),
                   ),
                 );
               } else {
@@ -1579,17 +1597,43 @@ class _DeckSelectorModal extends ConsumerWidget {
                       '${d.cards.length} Cards • 4 ${d.pureClass?.name.toUpperCase() ?? ""} Landscapes',
                       style: const TextStyle(color: Colors.white54, fontSize: 10),
                     ),
-                    trailing: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.shade700,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      ),
-                      onPressed: () {
-                        deckController.loadDeck(d);
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Load', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.play_arrow, size: 12),
+                          label: const Text('Battle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFB71C1C),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                          onPressed: () {
+                            final opponentDeck = d.id == 'deck_pure_plant'
+                                ? PureDeckCatalog.beastPureDeck()
+                                : PureDeckCatalog.plantPureDeck();
+                            ref.read(combatEngineProvider.notifier).startBattleWithDecks(
+                              p1Deck: d,
+                              p2Deck: opponentDeck,
+                            );
+                            Navigator.of(context).pop();
+                            ref.read(appNavigationProvider.notifier).navigateTo(AppScreenState.play);
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber.shade700,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          ),
+                          onPressed: () {
+                            deckController.loadDeck(d);
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Load', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -1633,6 +1677,27 @@ class _DeckSelectorModal extends ConsumerWidget {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.play_arrow, size: 12),
+                            label: const Text('Battle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFB71C1C),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            ),
+                            onPressed: () {
+                              final opponentDeck = d.id == 'deck_pure_plant'
+                                  ? PureDeckCatalog.beastPureDeck()
+                                  : PureDeckCatalog.plantPureDeck();
+                              ref.read(combatEngineProvider.notifier).startBattleWithDecks(
+                                p1Deck: d,
+                                p2Deck: opponentDeck,
+                              );
+                              Navigator.of(context).pop();
+                              ref.read(appNavigationProvider.notifier).navigateTo(AppScreenState.play);
+                            },
+                          ),
+                          const SizedBox(width: 6),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.tealAccent.shade700,
