@@ -2,7 +2,7 @@
 // [MODULE_NAME]: catalog_ingestion_test.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Test / Data Ingestion & Quality Audit
-// [INTENT]: 4-Vector validation suite for Cycle 12.1 Lunacian thematic consolidation, deserializing master catalogs, checking mathematical invariance, benchmarks, and IP purge.
+// [INTENT]: 4-Vector validation suite for Cycle 12.2 Rainbow Unification and Anatomical Calibration, deserializing master catalogs, checking mathematical invariance, benchmarks, neutral affinity assertions, and IP purge.
 // [DEPENDENCIES]: package:flutter_test/flutter_test.dart, dart:io
 // [ARCHITECTURE]: Pure Domain & Quality Verification Test Suite
 // ===============================================================================
@@ -14,7 +14,7 @@ import 'package:lunacian_card_wars/src/domain/entities/combat/combat_enums.dart'
 import 'package:lunacian_card_wars/src/domain/entities/combat/spell_card_entity.dart';
 
 void main() {
-  group('Cycle 12.1: Lunacian Thematic Consolidation & Catalog Ingestion', () {
+  group('Cycle 12.2: Rainbow Unification & Catalog Ingestion', () {
     final structuresFile = File('assets/data/generated/structures_master.csv');
     final spellsFile = File('assets/data/generated/spells_master.csv');
 
@@ -95,7 +95,7 @@ void main() {
 
         // Enum mappings valid
         expect(BuildingEffectType.values.contains(bldg.effectType), isTrue);
-        expect(BoardClassAffinity.values.contains(bldg.axieClassAffinity), isTrue);
+        expect(bldg.axieClassAffinity, equals(BoardClassAffinity.neutral), reason: 'Structure ${bldg.id} must have neutral affinity');
       }
 
       expect(structures.length, equals(30), reason: 'Must deserialize exactly 30 structures');
@@ -130,7 +130,7 @@ void main() {
         // Enum mappings valid
         expect(SpellTargetType.values.contains(spell.targetType), isTrue);
         expect(SpellEffectType.values.contains(spell.effectType), isTrue);
-        expect(BoardClassAffinity.values.contains(spell.axieClassAffinity), isTrue);
+        expect(spell.axieClassAffinity, equals(BoardClassAffinity.neutral), reason: 'Spell ${spell.id} must have neutral affinity');
       }
 
       expect(spells.length, equals(49), reason: 'Must deserialize exactly 49 spells');
@@ -319,6 +319,7 @@ void main() {
       final auditedFiles = [
         'lib/src/domain/entities/combat/building_card_entity.dart',
         'lib/src/domain/entities/combat/spell_card_entity.dart',
+        'lib/src/domain/services/axie_stat_calibrator.dart',
         'tool/extraction/fetch_land_items.dart',
         'test/data/catalog_ingestion_test.dart',
       ];

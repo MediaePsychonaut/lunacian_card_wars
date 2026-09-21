@@ -155,7 +155,7 @@ class BuildingCardEntity implements CombatCard {
     return BuildingCardEntity(
       id: id ?? 'bldg_atk_totem',
       name: 'Attack Totem',
-      axieClassAffinity: BoardClassAffinity.beast,
+      axieClassAffinity: BoardClassAffinity.neutral,
       manaCost: 2,
       maxHp: 12,
       armorReduction: 1,
@@ -170,7 +170,7 @@ class BuildingCardEntity implements CombatCard {
     return BuildingCardEntity(
       id: id ?? 'bldg_def_barricade',
       name: 'Defense Barricade',
-      axieClassAffinity: BoardClassAffinity.plant,
+      axieClassAffinity: BoardClassAffinity.neutral,
       manaCost: 2,
       maxHp: 16,
       armorReduction: 2,
@@ -185,7 +185,7 @@ class BuildingCardEntity implements CombatCard {
     return BuildingCardEntity(
       id: id ?? 'bldg_vitality_shrine',
       name: 'Vitality Shrine',
-      axieClassAffinity: BoardClassAffinity.plant,
+      axieClassAffinity: BoardClassAffinity.neutral,
       manaCost: 3,
       maxHp: 14,
       armorReduction: 1,

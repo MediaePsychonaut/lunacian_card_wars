@@ -3,13 +3,14 @@
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Domain / Entities
 // [INTENT]: In-memory Axie Card Model deserializing axpInfo level & Master Spec stats with Floop abilities and stat conservation bias shifts.
-// [DEPENDENCIES]: combat/combat_enums.dart, combat/combat_card.dart, combat/floop_ability_entity.dart
+// [DEPENDENCIES]: combat/combat_enums.dart, combat/combat_card.dart, combat/floop_ability_entity.dart, ../services/axie_stat_calibrator.dart
 // [ARCHITECTURE]: Immutable Domain Entity Pattern
 // ===============================================================================
 
 import 'combat/combat_enums.dart';
 import 'combat/combat_card.dart';
 import 'combat/floop_ability_entity.dart';
+import '../services/axie_stat_calibrator.dart';
 
 enum AxieElementalClass { beast, aquatic, plant, bird, bug, reptile, mech, dusk, dawn, unknown }
 enum FloopSource { mouth, tail, secret }
@@ -34,6 +35,9 @@ class AxieCardEntity implements CombatCard {
   final String proxySpriteUrl;
   final Map<String, dynamic> rawGenes;
   final FloopAbilityEntity? floop;
+  final AxieElementalClass? hornClass;
+  final AxieElementalClass? backClass;
+  final int numEvolvedParts;
 
   const AxieCardEntity({
     required this.id,
@@ -52,6 +56,9 @@ class AxieCardEntity implements CombatCard {
     required this.proxySpriteUrl,
     required this.rawGenes,
     this.floop,
+    this.hornClass,
+    this.backClass,
+    this.numEvolvedParts = 0,
   });
 
   int get effectiveAtk => baseAtk + (floop?.atkMod ?? 0);
@@ -72,6 +79,39 @@ class AxieCardEntity implements CombatCard {
     _ => BoardClassAffinity.neutral,
   };
 
+  /// Recalculates base ATK and DEF for a new mana cost using deterministic BST calibration.
+  AxieCardEntity recalculateForManaCost(int newManaCost, {int? numEvolvedParts}) {
+    final evolved = numEvolvedParts ?? this.numEvolvedParts;
+    int hp = 0, speed = 0, skill = 0, morale = 0;
+    final stats = rawGenes['stats'] as Map<String, dynamic>?;
+    if (stats != null) {
+      hp = (stats['hp'] as num?)?.toInt() ?? 0;
+      speed = (stats['speed'] as num?)?.toInt() ?? 0;
+      skill = (stats['skill'] as num?)?.toInt() ?? 0;
+      morale = (stats['morale'] as num?)?.toInt() ?? 0;
+    }
+
+    final calibrated = AxieStatCalibrator.calibrate(
+      manaCost: newManaCost,
+      bodyClass: axieClass,
+      hornClass: hornClass,
+      backClass: backClass,
+      numEvolvedParts: evolved,
+      isMouthFloop: selectedFloop == FloopSource.mouth,
+      hp: hp,
+      speed: speed,
+      skill: skill,
+      morale: morale,
+    );
+
+    return copyWith(
+      manaCost: newManaCost,
+      baseAtk: calibrated.atk,
+      baseDef: calibrated.def,
+      numEvolvedParts: evolved,
+    );
+  }
+
   AxieCardEntity copyWith({
     String? id,
     String? name,
@@ -90,6 +130,9 @@ class AxieCardEntity implements CombatCard {
     Map<String, dynamic>? rawGenes,
     FloopAbilityEntity? floop,
     bool clearFloop = false,
+    AxieElementalClass? hornClass,
+    AxieElementalClass? backClass,
+    int? numEvolvedParts,
   }) {
     return AxieCardEntity(
       id: id ?? this.id,
@@ -108,6 +151,9 @@ class AxieCardEntity implements CombatCard {
       proxySpriteUrl: proxySpriteUrl ?? this.proxySpriteUrl,
       rawGenes: rawGenes ?? this.rawGenes,
       floop: clearFloop ? null : (floop ?? this.floop),
+      hornClass: hornClass ?? this.hornClass,
+      backClass: backClass ?? this.backClass,
+      numEvolvedParts: numEvolvedParts ?? this.numEvolvedParts,
     );
   }
 
@@ -122,19 +168,7 @@ class AxieCardEntity implements CombatCard {
 
     final className = (json['class'] as String?)?.toLowerCase() ?? 'unknown';
 
-    AxieElementalClass resolvedClass;
-    switch (className) {
-      case 'beast': resolvedClass = AxieElementalClass.beast; break;
-      case 'aquatic': resolvedClass = AxieElementalClass.aquatic; break;
-      case 'plant': resolvedClass = AxieElementalClass.plant; break;
-      case 'bird': resolvedClass = AxieElementalClass.bird; break;
-      case 'bug': resolvedClass = AxieElementalClass.bug; break;
-      case 'reptile': resolvedClass = AxieElementalClass.reptile; break;
-      case 'mech': resolvedClass = AxieElementalClass.mech; break;
-      case 'dusk': resolvedClass = AxieElementalClass.dusk; break;
-      case 'dawn': resolvedClass = AxieElementalClass.dawn; break;
-      default: resolvedClass = AxieElementalClass.unknown;
-    }
+    final resolvedClass = AxieStatCalibrator.parseClass(className);
 
     // Master Spec v3.1 Mana Formula: min(7, floor(level / 10) + 1)
     final calculatedMana = (level ~/ 10) + 1;
@@ -143,22 +177,51 @@ class AxieCardEntity implements CombatCard {
     final parts = (json['parts'] as List<dynamic>?) ?? [];
     String mouthName = 'Basic Bite';
     String tailName = 'Basic Tail';
-    String hornName = 'Standard Horn';
-    String backName = 'Standard Shell';
+    AxieElementalClass? hornClass;
+    AxieElementalClass? backClass;
+    int evolvedCount = 0;
 
     for (final p in parts) {
       if (p is Map<String, dynamic>) {
         final type = p['type']?.toString().toLowerCase();
         final pName = p['name']?.toString() ?? '';
+        final pClassStr = p['class']?.toString();
+        final pClass = pClassStr != null ? AxieStatCalibrator.parseClass(pClassStr) : null;
+        final stage = (p['stage'] as num?)?.toInt() ?? 1;
+        if (stage >= 2) evolvedCount++;
+
         if (type == 'mouth') mouthName = pName;
         if (type == 'tail') tailName = pName;
-        if (type == 'horn') hornName = pName;
-        if (type == 'back') backName = pName;
+        if (type == 'horn') {
+          hornClass = pClass;
+        }
+        if (type == 'back') {
+          backClass = pClass;
+        }
       }
     }
 
-    final baseAtk = 8 + (hornName.length % 12);
-    final baseDef = 10 + (backName.length % 15);
+    final stats = json['stats'] as Map<String, dynamic>?;
+    final hp = (stats?['hp'] as num?)?.toInt() ?? 0;
+    final speed = (stats?['speed'] as num?)?.toInt() ?? 0;
+    final skill = (stats?['skill'] as num?)?.toInt() ?? 0;
+    final morale = (stats?['morale'] as num?)?.toInt() ?? 0;
+
+    final numEvolvedParts = (json['numEvolvedParts'] as num?)?.toInt() ?? evolvedCount;
+
+    final calibrated = AxieStatCalibrator.calibrate(
+      manaCost: manaCost,
+      bodyClass: resolvedClass,
+      hornClass: hornClass,
+      backClass: backClass,
+      numEvolvedParts: numEvolvedParts,
+      isMouthFloop: true,
+      hp: hp,
+      speed: speed,
+      skill: skill,
+      morale: morale,
+    );
+
     final initialPips = (resolvedClass == AxieElementalClass.beast || resolvedClass == AxieElementalClass.bug) ? 1 : 0;
 
     // Direct root image resolution with verified CDN transparent fallback & wsrv.nl proxy URL
@@ -173,8 +236,8 @@ class AxieCardEntity implements CombatCard {
       axieClass: resolvedClass,
       level: level,
       manaCost: manaCost,
-      baseAtk: baseAtk,
-      baseDef: baseDef,
+      baseAtk: calibrated.atk,
+      baseDef: calibrated.def,
       initialPips: initialPips,
       maxPips: 3,
       mouthPartName: mouthName,
@@ -183,6 +246,9 @@ class AxieCardEntity implements CombatCard {
       spriteUrl: resolvedSprite,
       proxySpriteUrl: proxyUrl,
       rawGenes: json,
+      hornClass: hornClass,
+      backClass: backClass,
+      numEvolvedParts: numEvolvedParts,
     );
   }
 }

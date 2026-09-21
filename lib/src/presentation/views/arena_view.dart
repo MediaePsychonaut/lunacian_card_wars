@@ -361,7 +361,7 @@ class ArenaView extends ConsumerWidget {
             )
           else
             Text(
-              '🏛️ ${building.name} (HP: ${building.currentHp}/${building.maxHp}, Arm: ${building.armorReduction}) [${building.effectType?.name.toUpperCase() ?? "NONE"}: +${building.effectValue}]',
+              '🏛️ ${building.name} (HP: ${building.currentHp}/${building.maxHp}, Arm: ${building.armorReduction} | NEUTRAL) [${building.effectType?.name.toUpperCase() ?? "NONE"}: +${building.effectValue}]',
               style: const TextStyle(color: Colors.tealAccent, fontSize: 10, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
@@ -866,10 +866,10 @@ class ArenaView extends ConsumerWidget {
               cardLabel = '🐾 [${card.id}] ${card.name} (Cost:${card.manaCost} | A:${card.atk} D:${card.def} | ${card.affinity.name.toUpperCase()})';
               cardColor = _affinityColor(card.affinity);
             } else if (card is BuildingCardEntity) {
-              cardLabel = '🏛️ [${card.id}] ${card.name} (Cost:${card.manaCost} | HP:${card.maxHp} Arm:${card.armorReduction})';
+              cardLabel = '🏛️ [${card.id}] ${card.name} (Cost:${card.manaCost} | HP:${card.maxHp} Arm:${card.armorReduction} | NEUTRAL)';
               cardColor = Colors.tealAccent;
             } else if (card is SpellCardEntity) {
-              cardLabel = '✨ [${card.id}] ${card.name} (Cost:${card.manaCost} | ${card.targetType.name} | ${card.effectType.name}:${card.effectValue})';
+              cardLabel = '✨ [${card.id}] ${card.name} (Cost:${card.manaCost} | NEUTRAL | ${card.targetType.name} | ${card.effectType.name}:${card.effectValue})';
               cardColor = Colors.purpleAccent;
             } else {
               cardLabel = '[${card.id}] ${card.name} (Cost:${card.manaCost})';
@@ -1021,7 +1021,7 @@ class ArenaView extends ConsumerWidget {
               } else if (card is BuildingCardEntity) {
                 return ChoiceChip(
                   label: Text(
-                    '🏛️ [${card.id}] ${card.name} (Cost: ${card.manaCost} | HP:${card.maxHp} Arm:${card.armorReduction} | ${card.effectType.name.toUpperCase()}:+${card.effectValue})',
+                    '🏛️ [${card.id}] ${card.name} (Cost: ${card.manaCost} | HP:${card.maxHp} Arm:${card.armorReduction} | NEUTRAL | ${card.effectType.name.toUpperCase()}:+${card.effectValue})',
                     style: TextStyle(
                       color: isSelected ? Colors.black : Colors.tealAccent,
                       fontSize: 10,
@@ -1037,7 +1037,7 @@ class ArenaView extends ConsumerWidget {
               } else if (card is SpellCardEntity) {
                 return ChoiceChip(
                   label: Text(
-                    '✨ [${card.id}] ${card.name} (Cost: ${card.manaCost} | ${card.effectType.name.toUpperCase()}: ${card.effectValue})',
+                    '✨ [${card.id}] ${card.name} (Cost: ${card.manaCost} | NEUTRAL | ${card.effectType.name.toUpperCase()}: ${card.effectValue})',
                     style: TextStyle(
                       color: isSelected ? Colors.black : Colors.purpleAccent,
                       fontSize: 10,

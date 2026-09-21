@@ -183,7 +183,7 @@ class SpellCardEntity extends Equatable implements CombatCard {
     return SpellCardEntity(
       id: id,
       name: 'Potion of Vitality',
-      axieClassAffinity: BoardClassAffinity.plant,
+      axieClassAffinity: BoardClassAffinity.neutral,
       manaCost: 1,
       spellType: 'TARGETED',
       targetType: SpellTargetType.alliedUnit,
@@ -202,7 +202,7 @@ class SpellCardEntity extends Equatable implements CombatCard {
     return SpellCardEntity(
       id: id,
       name: 'Star Shuriken',
-      axieClassAffinity: BoardClassAffinity.bird,
+      axieClassAffinity: BoardClassAffinity.neutral,
       manaCost: 2,
       spellType: 'TARGETED',
       targetType: SpellTargetType.enemyUnit,

@@ -99,8 +99,8 @@ void main() {
       final buba = AxieCardFactory.bubaStarter();
       expect(buba.axieClass, AxieElementalClass.beast);
       expect(buba.manaCost, 3);
-      expect(buba.baseAtk, 22);
-      expect(buba.baseDef, 18);
+      expect(buba.baseAtk, 16);
+      expect(buba.baseDef, 11);
       expect(buba.initialPips, 1);
       expect(buba.floop?.name, 'Brutal Claw');
       expect(buba.floop?.effectType, FloopEffectType.directDamage);
@@ -109,8 +109,8 @@ void main() {
       final olek = AxieCardFactory.olekStarter();
       expect(olek.axieClass, AxieElementalClass.plant);
       expect(olek.manaCost, 3);
-      expect(olek.baseAtk, 16);
-      expect(olek.baseDef, 26);
+      expect(olek.baseAtk, 9);
+      expect(olek.baseDef, 18);
       expect(olek.floop?.name, 'Forest Armor');
       expect(olek.floop?.effectType, FloopEffectType.restoreDef);
       expect(olek.floop?.effectValue, 6);
@@ -118,8 +118,8 @@ void main() {
       final puffy = AxieCardFactory.puffyStarter();
       expect(puffy.axieClass, AxieElementalClass.aquatic);
       expect(puffy.manaCost, 3);
-      expect(puffy.baseAtk, 20);
-      expect(puffy.baseDef, 20);
+      expect(puffy.baseAtk, 14);
+      expect(puffy.baseDef, 13);
       expect(puffy.floop?.name, 'Bubble Surge');
       expect(puffy.floop?.effectType, FloopEffectType.buffAtk);
       expect(puffy.floop?.effectValue, 4);
@@ -323,7 +323,7 @@ void main() {
           ),
           BoardLaneEntity(
             laneIndex: 1,
-            // Puffy: 20 baseAtk. Floop buffs +4 ATK.
+            // Puffy: 14 baseAtk. Floop buffs +4 ATK.
             p1Slot: LaneSlot(
               tileAffinity: BoardClassAffinity.aquatic,
               occupant: BoardUnitEntity.fromAxieCard(puffy, instanceId: 'u_puffy'),
@@ -342,7 +342,7 @@ void main() {
 
       // Activate Puffy Floop: Bubble Surge (+4 ATK)
       state = engine.reduce(state, ActivateFloopAction(PlayerId.p1, 1));
-      expect(state.lanes[1].p1Slot.occupant?.baseAtk, 24);
+      expect(state.lanes[1].p1Slot.occupant?.baseAtk, 18);
     });
   });
 
