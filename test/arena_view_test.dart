@@ -89,7 +89,9 @@ void main() {
     expect(find.textContaining('Advance / Auto-Place Remaining Tiles'), findsWidgets);
 
     // 6. Test interaction: Auto-Place Remaining Tiles & Transition to Mulligan
-    await tester.tap(find.textContaining('Advance / Auto-Place Remaining Tiles').first);
+    final autoPlaceBtn = find.textContaining('Advance / Auto-Place Remaining Tiles').first;
+    await tester.ensureVisible(autoPlaceBtn);
+    await tester.tap(autoPlaceBtn);
     await tester.pump();
 
     // Now all 8 tiles are placed, 4 cards drawn each, and phase is turnZeroMulligan

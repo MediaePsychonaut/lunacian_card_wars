@@ -2,7 +2,7 @@
 // [MODULE_NAME]: arena_view.dart
 // [SYSTEM]: lunacian_card_wars
 // [DOMAIN]: Presentation / Views
-// [INTENT]: Developer-grade FSM State Graph & Telemetry Inspector with 4-lane matrix, building telemetry, visible mulligan hand selection, 7-card hand ceiling, canonical Axie floops, and tactical spells.
+// [INTENT]: 2.5D Arena Diorama Battle Mode with living tavern game board aesthetic, 4-lane FSM telemetry inspector, visible mulligan hand selection, 7-card hand ceiling, canonical Axie floops, hand fan dock, and tactical spells.
 // [DEPENDENCIES]: package:flutter/material.dart, package:flutter_riverpod/flutter_riverpod.dart, ../controllers/app_navigation_controller.dart, ../controllers/combat_engine_controller.dart, widgets/atmospheric_battlefield_backdrop.dart, ../../domain/entities/combat/combat_enums.dart, ../../domain/entities/combat/board_lane_entity.dart, ../../domain/entities/combat/board_unit_entity.dart, ../../domain/entities/combat/board_building_entity.dart, ../../domain/entities/combat/building_card_entity.dart, ../../domain/entities/combat/spell_card_entity.dart, ../../domain/entities/combat/floop_ability_entity.dart, ../../domain/entities/combat/combat_card.dart, ../../domain/entities/axie_card_entity.dart, ../../domain/entities/combat/game_state.dart, ../../domain/entities/combat/player_state_entity.dart
 // [ARCHITECTURE]: ConsumerWidget
 // ===============================================================================
@@ -183,6 +183,324 @@ class ArenaView extends ConsumerWidget {
   }
 
   Widget _buildBoardMatrix(GameState gameState, CombatEngineController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── 2.5D Arena Diorama ──────────────────────────────────────────────
+        Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0008)
+            ..rotateX(-0.22),
+          alignment: Alignment.center,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF3D1A00),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF8B5E00), width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // P2 Units Row (opponent, top of board)
+                _buildBoardRow(gameState, PlayerId.p2, gameState.lanes),
+                // Lane Divider with Medallions
+                _buildLaneDivider(),
+                // P1 Units Row (player, bottom of board)
+                _buildBoardRow(gameState, PlayerId.p1, gameState.lanes),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // ── Legacy Telemetry Table (required by existing tests) ─────────────
+        _buildLaneTelemetryTable(gameState),
+      ],
+    );
+  }
+
+  /// 2.5D diorama row for one player's units across 4 lanes.
+  Widget _buildBoardRow(
+    GameState gameState,
+    PlayerId playerId,
+    List<BoardLaneEntity> lanes,
+  ) {
+    final laneColors = [
+      const Color(0xFFFFB800), // Beast
+      const Color(0xFF00B4D8), // Aquatic
+      const Color(0xFF48BB78), // Plant
+      const Color(0xFFFF69B4), // Bird
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(lanes.length, (i) {
+        final lane = lanes[i];
+        final slot = playerId == PlayerId.p1 ? lane.p1Slot : lane.p2Slot;
+        final hasTile = slot.tileAffinity != null;
+        final laneColor = hasTile ? _affinityColor(slot.tileAffinity!) : laneColors[i % laneColors.length];
+
+        return Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            constraints: const BoxConstraints(minHeight: 110),
+            decoration: BoxDecoration(
+              color: laneColor.withValues(alpha: hasTile ? 0.16 : 0.06),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: hasTile
+                    ? laneColor.withValues(alpha: 0.7)
+                    : Colors.white.withValues(alpha: 0.15),
+                width: hasTile ? 1.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Elemental Affinity Badge (AC-04)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  margin: const EdgeInsets.only(bottom: 2),
+                  decoration: BoxDecoration(
+                    color: hasTile ? laneColor.withValues(alpha: 0.3) : Colors.white10,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    hasTile
+                        ? '${slot.tileAffinity!.name.toUpperCase()} TILE'
+                        : 'NO TILE',
+                    style: TextStyle(
+                      color: hasTile ? laneColor : Colors.white38,
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                _buildStandee(slot.occupant, laneColor, slot.hasFloopedThisRound),
+                if (slot.building != null) ...[
+                  const SizedBox(height: 2),
+                  Icon(
+                    Icons.castle,
+                    color: laneColor.withValues(alpha: 0.8),
+                    size: 16,
+                  ),
+                  Text(
+                    slot.building!.name,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 7,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// Pop-up standee for a unit in a lane cell.
+  Widget _buildStandee(
+    BoardUnitEntity? unit,
+    Color laneColor,
+    bool hasFlooped,
+  ) {
+    if (unit == null) {
+      // Empty slot: dashed border circle
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: laneColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            '·',
+            style: TextStyle(
+              color: laneColor.withValues(alpha: 0.4),
+              fontSize: 18,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final standeeWidget = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: laneColor.withValues(alpha: 0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.network(
+              unit.spriteUrl,
+              height: 48,
+              width: 40,
+              fit: BoxFit.contain,
+              errorBuilder: (_, e, s) =>
+                  Icon(Icons.smart_toy, color: laneColor, size: 40),
+
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        // ATK / DEF micro-badges
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                '${unit.currentAtk}',
+                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                '${unit.currentDef}',
+                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        // Pip dots
+        const SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(unit.maxPips, (p) {
+            final filled = p < unit.currentPips;
+            return Container(
+              width: 4,
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: filled
+                    ? laneColor.withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.2),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+
+    if (hasFlooped) {
+      return Transform.rotate(
+        angle: 0.61,
+        child: standeeWidget,
+      );
+    }
+    return standeeWidget;
+  }
+
+  /// Horizontal divider row with class medallions between the two player rows.
+  Widget _buildLaneDivider() {
+    final medallions = [
+      (Icons.pets, const Color(0xFFFFB800)),
+      (Icons.water_drop, const Color(0xFF00B4D8)),
+      (Icons.eco, const Color(0xFF48BB78)),
+      (Icons.air, const Color(0xFFFF69B4)),
+    ];
+
+    return SizedBox(
+      height: 36,
+      child: Row(
+        children: List.generate(medallions.length, (i) {
+          final (icon, color) = medallions[i];
+          return Expanded(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Center divider line
+                Container(
+                  height: 1,
+                  color: const Color(0xFF8B5E00).withValues(alpha: 0.5),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (i > 0)
+                      const Text(
+                        '⚔',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color,
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Icon(icon, color: Colors.white, size: 14),
+                    ),
+                    const SizedBox(width: 4),
+                    if (i < medallions.length - 1)
+                      const Text(
+                        '⚔',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  /// Legacy telemetry table — preserved intact so existing tests keep passing.
+  Widget _buildLaneTelemetryTable(GameState gameState) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -518,8 +836,8 @@ class ArenaView extends ConsumerWidget {
     required bool isP1,
   }) {
     final heroHpRatio = (player.heroHp / player.maxHp).clamp(0.0, 1.0);
-    final manaRatio = player.maxMana > 0 ? (player.currentMana / player.maxMana).clamp(0.0, 1.0) : 0.0;
     final isTargetActive = gameState.activePlayer == player.id;
+
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -592,7 +910,13 @@ class ArenaView extends ConsumerWidget {
                       child: LinearProgressIndicator(
                         value: heroHpRatio,
                         backgroundColor: Colors.red.withValues(alpha: 0.2),
-                        valueColor: const AlwaysStoppedAnimation(Colors.redAccent),
+                        valueColor: AlwaysStoppedAnimation(
+                          player.heroHp > 15
+                              ? const Color(0xFF48BB78)
+                              : player.heroHp > 7
+                                  ? const Color(0xFFFFB812)
+                                  : const Color(0xFFE53935),
+                        ),
                         minHeight: 6,
                       ),
                     ),
@@ -604,27 +928,38 @@ class ArenaView extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Mana: ${player.currentMana}/${player.maxMana}',
-                          style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold, fontSize: 11),
-                        ),
-                        Text(
-                          player.maxMana > 0 ? '${(manaRatio * 100).toInt()}%' : '0%',
-                          style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 10),
-                        ),
-                      ],
+                    Text(
+                      'Mana: ${player.currentMana}/${player.maxMana}',
+                      style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold, fontSize: 11),
                     ),
-                    const SizedBox(height: 3),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: manaRatio,
-                        backgroundColor: Colors.blue.withValues(alpha: 0.2),
-                        valueColor: const AlwaysStoppedAnimation(Colors.lightBlueAccent),
-                        minHeight: 6,
+                    const SizedBox(height: 4),
+                    // Mana orbs — up to 10 individual dots
+                    Wrap(
+                      spacing: 3,
+                      runSpacing: 3,
+                      children: List.generate(
+                        player.maxMana.clamp(0, 10),
+                        (i) {
+                          final filled = i < player.currentMana;
+                          return Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: filled
+                                  ? const Color(0xFF805AD5)
+                                  : Colors.white24,
+                              boxShadow: filled
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF805AD5).withValues(alpha: 0.6),
+                                        blurRadius: 4,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -633,6 +968,7 @@ class ArenaView extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
+
 
           // Hand Gauge, Deck, Graveyard, and Mulligan Badges
           Wrap(
@@ -676,6 +1012,10 @@ class ArenaView extends ConsumerWidget {
           ),
           const Divider(color: Colors.white24, height: 16),
 
+          // Hand Fan Dock — visual card back display
+          _buildHandFanDock(player, accentColor),
+          const SizedBox(height: 8),
+
           // Dynamic Cockpit Actions based on TurnPhase
           if (gameState.phase == TurnPhase.turnZeroTilePlacement)
             _buildTilePlacementControls(gameState, controller, player.id, player)
@@ -687,6 +1027,81 @@ class ArenaView extends ConsumerWidget {
       ),
     );
   }
+
+  /// Visual hand fan dock: shows mini card backs for cards in hand.
+  Widget _buildHandFanDock(PlayerStateEntity playerState, Color accent) {
+    const int maxVisible = 7;
+    final handCount = playerState.hand.length;
+    final displayCount = handCount.clamp(0, maxVisible);
+    final overflow = handCount - maxVisible;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hand (${playerState.hand.length}/7):',
+          style: TextStyle(
+            color: accent.withValues(alpha: 0.8),
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...List.generate(displayCount, (i) {
+              return Container(
+                width: 28,
+                height: 40,
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A2035),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: accent, width: 1),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.diamond,
+                    color: accent.withValues(alpha: 0.5),
+                    size: 14,
+                  ),
+                ),
+              );
+            }),
+            if (overflow > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: accent.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  '+$overflow more',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            if (handCount == 0)
+              Text(
+                'Empty hand',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+
 
   Widget _buildTilePlacementControls(
     GameState gameState,

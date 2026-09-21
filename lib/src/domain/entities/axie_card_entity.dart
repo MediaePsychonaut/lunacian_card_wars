@@ -79,6 +79,8 @@ class AxieCardEntity implements CombatCard {
     _ => BoardClassAffinity.neutral,
   };
 
+  BoardClassAffinity get classAffinity => affinity;
+
   /// Recalculates base ATK and DEF for a new mana cost using deterministic BST calibration.
   AxieCardEntity recalculateForManaCost(int newManaCost, {int? numEvolvedParts}) {
     final evolved = numEvolvedParts ?? this.numEvolvedParts;
@@ -157,7 +159,100 @@ class AxieCardEntity implements CombatCard {
     );
   }
 
-  factory AxieCardEntity.fromLocalJson(Map<String, dynamic> json) => AxieCardEntity.fromGraphQL(json);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'class': axieClass.name,
+        'level': level,
+        'manaCost': manaCost,
+        'baseAtk': baseAtk,
+        'baseDef': baseDef,
+        'initialPips': initialPips,
+        'maxPips': maxPips,
+        'mouthPartName': mouthPartName,
+        'tailPartName': tailPartName,
+        'selectedFloop': selectedFloop.name,
+        'spriteUrl': spriteUrl,
+        'proxySpriteUrl': proxySpriteUrl,
+        'rawGenes': rawGenes,
+        'hornClass': hornClass?.name,
+        'backClass': backClass?.name,
+        'numEvolvedParts': numEvolvedParts,
+        if (floop != null) 'floop': floop!.toJson(),
+      };
+
+  factory AxieCardEntity.fromJson(Map<String, dynamic> json) {
+    if (json['parts'] != null && json['baseAtk'] == null) {
+      return AxieCardEntity.fromGraphQL(json);
+    }
+
+    final id = json['id']?.toString() ?? '0';
+    final name = json['name']?.toString() ?? 'Axie #$id';
+    final classStr = json['class']?.toString() ?? json['axieClass']?.toString();
+    final resolvedClass = AxieStatCalibrator.parseClass(classStr);
+
+    final level = (json['level'] as num?)?.toInt() ?? 1;
+    final manaCost = (json['manaCost'] as num?)?.toInt() ?? 1;
+    final baseAtk = (json['baseAtk'] as num?)?.toInt() ?? 0;
+    final baseDef = (json['baseDef'] as num?)?.toInt() ?? 0;
+    final initialPips = (json['initialPips'] as num?)?.toInt() ?? 0;
+    final maxPips = (json['maxPips'] as num?)?.toInt() ?? 3;
+    final mouthName = json['mouthPartName']?.toString() ?? 'Basic Bite';
+    final tailName = json['tailPartName']?.toString() ?? 'Basic Tail';
+
+    final floopSourceStr = json['selectedFloop']?.toString() ?? 'mouth';
+    final selectedFloop = FloopSource.values.firstWhere(
+      (e) => e.name.toLowerCase() == floopSourceStr.toLowerCase(),
+      orElse: () => FloopSource.mouth,
+    );
+
+    final spriteUrl = json['spriteUrl']?.toString() ?? '';
+    final proxySpriteUrl = json['proxySpriteUrl']?.toString() ?? '';
+    final rawGenes = (json['rawGenes'] is Map)
+        ? Map<String, dynamic>.from(json['rawGenes'] as Map)
+        : <String, dynamic>{};
+
+    final hornClassStr = json['hornClass']?.toString();
+    final hornClass = hornClassStr != null ? AxieStatCalibrator.parseClass(hornClassStr) : null;
+
+    final backClassStr = json['backClass']?.toString();
+    final backClass = backClassStr != null ? AxieStatCalibrator.parseClass(backClassStr) : null;
+
+    final numEvolvedParts = (json['numEvolvedParts'] as num?)?.toInt() ?? 0;
+
+    FloopAbilityEntity? floop;
+    if (json['floop'] != null) {
+      if (json['floop'] is Map<String, dynamic>) {
+        floop = FloopAbilityEntity.fromJson(json['floop'] as Map<String, dynamic>);
+      } else if (json['floop'] is Map) {
+        floop = FloopAbilityEntity.fromJson(Map<String, dynamic>.from(json['floop'] as Map));
+      }
+    }
+
+    return AxieCardEntity(
+      id: id,
+      name: name,
+      axieClass: resolvedClass,
+      level: level,
+      manaCost: manaCost,
+      baseAtk: baseAtk,
+      baseDef: baseDef,
+      initialPips: initialPips,
+      maxPips: maxPips,
+      mouthPartName: mouthName,
+      tailPartName: tailName,
+      selectedFloop: selectedFloop,
+      spriteUrl: spriteUrl,
+      proxySpriteUrl: proxySpriteUrl,
+      rawGenes: rawGenes,
+      floop: floop,
+      hornClass: hornClass,
+      backClass: backClass,
+      numEvolvedParts: numEvolvedParts,
+    );
+  }
+
+  factory AxieCardEntity.fromLocalJson(Map<String, dynamic> json) => AxieCardEntity.fromJson(json);
 
   factory AxieCardEntity.fromGraphQL(Map<String, dynamic> json) {
     final id = json['id']?.toString() ?? '0';

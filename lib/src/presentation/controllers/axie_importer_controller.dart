@@ -70,4 +70,15 @@ class AxieImporterController extends AsyncNotifier<List<AxieCardEntity>> {
       // Error state is already captured in state = AsyncValue.error(err, stack)
     }
   }
+
+  bool get isOfflineFallback {
+    final ds = _dataSource;
+    if (ds is AxieMarketplaceRemoteDataSource) {
+      return ds.isOfflineFallbackActive;
+    }
+    if (ds is OfflineFallbackDataSource) {
+      return true;
+    }
+    return false;
+  }
 }

@@ -99,6 +99,47 @@ class FloopAbilityEntity extends Equatable {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'manaCost': manaCost,
+        'description': description,
+        'targetRequirement': targetRequirement.name,
+        'effectType': effectType.name,
+        'effectValue': effectValue,
+        'atkMod': atkMod,
+        'defMod': defMod,
+        'scalingFormula': scalingFormula,
+        'conditionalRule': conditionalRule,
+        'isSecret': isSecret,
+      };
+
+  factory FloopAbilityEntity.fromJson(Map<String, dynamic> json) {
+    final targetReqStr = json['targetRequirement']?.toString() ?? 'self';
+    final effectTypeStr = json['effectType']?.toString() ?? 'directDamage';
+
+    return FloopAbilityEntity(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      manaCost: (json['manaCost'] as num?)?.toInt() ?? 0,
+      description: json['description'] as String? ?? '',
+      targetRequirement: FloopTargetType.values.firstWhere(
+        (e) => e.name.toLowerCase() == targetReqStr.toLowerCase(),
+        orElse: () => FloopTargetType.self,
+      ),
+      effectType: FloopEffectType.values.firstWhere(
+        (e) => e.name.toLowerCase() == effectTypeStr.toLowerCase(),
+        orElse: () => FloopEffectType.directDamage,
+      ),
+      effectValue: (json['effectValue'] as num?)?.toInt() ?? 0,
+      atkMod: (json['atkMod'] as num?)?.toInt() ?? 0,
+      defMod: (json['defMod'] as num?)?.toInt() ?? 0,
+      scalingFormula: json['scalingFormula'] as String? ?? 'NONE',
+      conditionalRule: json['conditionalRule'] as String? ?? 'NONE',
+      isSecret: json['isSecret'] as bool? ?? false,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,
