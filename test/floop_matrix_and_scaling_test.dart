@@ -160,7 +160,7 @@ void main() {
           .toList();
 
       expect(lines.length, equals(31), reason: 'Must contain 1 header + 30 data rows');
-      expect(lines.first.startsWith('structure_id,name,landscape,'), isTrue);
+      expect(lines.first.startsWith('structure_id,name,axie_class_affinity,'), isTrue);
     });
 
     test('spells_master.csv has exactly 50 lines', () {
@@ -171,7 +171,7 @@ void main() {
           .toList();
 
       expect(lines.length, equals(50), reason: 'Must contain 1 header + 49 data rows');
-      expect(lines.first.startsWith('spell_id,name,landscape_affinity,'), isTrue);
+      expect(lines.first.startsWith('spell_id,name,axie_class_affinity,'), isTrue);
     });
   });
 }

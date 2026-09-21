@@ -11,6 +11,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lunacian_card_wars/src/domain/entities/axie_card_entity.dart';
 import 'package:lunacian_card_wars/src/domain/entities/combat/floop_ability_entity.dart';
+import 'package:lunacian_card_wars/src/domain/entities/combat/building_card_entity.dart';
+import 'package:lunacian_card_wars/src/domain/entities/combat/spell_card_entity.dart';
 
 void main() {
   group('Cycle 12: Card Engine Datasets & Engine Integration Suite', () {
@@ -109,48 +111,68 @@ void main() {
       expect(hybridCount, equals(6));
     });
 
-    test('Test 4: Structures Master Schema, Landscapes and Activation Triggers', () {
+    test('Test 4: Structures Master 13-Column Schema, Axie Class Affinities and 73 MP Invariance', () {
       final lines = structuresFile.readAsLinesSync().where((l) => l.trim().isNotEmpty).toList();
-      const validLandscapes = {'corn_fields', 'blue_plains', 'nice_lands', 'sandy_lands', 'useless_swamp', 'rainbow'};
+      const validAffinities = {'beast', 'aquatic', 'plant', 'bird', 'bug', 'reptile', 'neutral'};
       const validTriggers = {'PASSIVE', 'ON_DESTROY', 'ON_SUMMON', 'START_OF_TURN', 'ON_FLOOP'};
 
+      expect(lines.first, equals('structure_id,name,axie_class_affinity,mana_cost,base_hp,armor_reduction,passive_effect_type,effect_value,scaling_formula,activation_trigger,target_scope,lore_description,card_art_asset_id'));
+
+      int totalStructureMana = 0;
       for (final row in lines.sublist(1)) {
         final cols = row.split(',');
-        expect(cols.length, equals(12), reason: 'Each structure row must have 12 columns: $row');
+        expect(cols.length, equals(13), reason: 'Each structure row must have 13 columns: $row');
 
-        final landscape = cols[2].trim();
+        final affinity = cols[2].trim();
         final manaCost = int.tryParse(cols[3].trim());
         final baseHp = int.tryParse(cols[4].trim());
-        final trigger = cols[8].trim();
+        final armorRed = int.tryParse(cols[5].trim());
+        final trigger = cols[9].trim();
+        final assetId = cols[12].trim();
 
-        expect(validLandscapes.contains(landscape), isTrue, reason: 'Invalid landscape: $landscape');
+        expect(validAffinities.contains(affinity), isTrue, reason: 'Invalid affinity: $affinity');
         expect(validTriggers.contains(trigger), isTrue, reason: 'Invalid trigger: $trigger');
         expect(manaCost, isNotNull);
         expect(manaCost! >= 0, isTrue);
         expect(baseHp, isNotNull);
         expect(baseHp! > 0, isTrue);
+        expect(armorRed, isNotNull);
+        expect(armorRed! >= 0, isTrue);
+        expect(assetId.startsWith('asset_struct_'), isTrue, reason: 'Invalid asset ID prefix: $assetId');
+
+        totalStructureMana += manaCost;
       }
+      expect(totalStructureMana, equals(73), reason: 'Total structure mana cost must be strictly 73 MP');
     });
 
-    test('Test 5: Spells Master Schema, Landscapes Affinities and Types', () {
+    test('Test 5: Spells Master 13-Column Schema, Axie Class Affinities and 97 MP Invariance', () {
       final lines = spellsFile.readAsLinesSync().where((l) => l.trim().isNotEmpty).toList();
-      const validAffinities = {'corn_fields', 'blue_plains', 'nice_lands', 'sandy_lands', 'useless_swamp', 'universal'};
+      const validAffinities = {'beast', 'aquatic', 'plant', 'bird', 'bug', 'reptile', 'neutral'};
       const validTypes = {'TARGETED', 'GLOBAL', 'INSTANT'};
 
+      expect(lines.first, equals('spell_id,name,axie_class_affinity,mana_cost,spell_type,effect_type,base_value,scaling_formula,target_scope,cast_window,rarity,description,card_art_asset_id'));
+
+      int totalSpellMana = 0;
       for (final row in lines.sublist(1)) {
         final cols = row.split(',');
-        expect(cols.length, equals(12), reason: 'Each spell row must have 12 columns: $row');
+        expect(cols.length, equals(13), reason: 'Each row must have 13 columns: $row');
 
         final affinity = cols[2].trim();
         final manaCost = int.tryParse(cols[3].trim());
         final spellType = cols[4].trim();
         final baseVal = int.tryParse(cols[6].trim());
+        final assetId = cols[12].trim();
 
         expect(validAffinities.contains(affinity), isTrue, reason: 'Invalid affinity: $affinity');
         expect(validTypes.contains(spellType), isTrue, reason: 'Invalid spell type: $spellType');
         expect(manaCost, isNotNull);
+        expect(manaCost! >= 0, isTrue);
         expect(baseVal, isNotNull);
+        expect(assetId.startsWith('asset_spell_'), isTrue, reason: 'Invalid asset ID prefix: $assetId');
+
+        totalSpellMana += manaCost;
       }
+      expect(totalSpellMana, equals(97), reason: 'Total spell mana cost must be strictly 97 MP');
     });
 
     test('Test 6: Pure Domain Entity Scaling and Stat Pool Conservation', () {
@@ -197,6 +219,42 @@ void main() {
       expect(axie.effectiveAtk, equals(45)); // 25 + 20
       expect(axie.effectiveDef, equals(0));  // 20 - 20
       expect(axie.effectiveAtk + axie.effectiveDef, equals(axie.baseAtk + axie.baseDef)); // 45 == 45
+    });
+
+    test('Test 7: Pure Domain fromCsv Deserialization of 30 Structures and 49 Spells', () {
+      final strLines = structuresFile.readAsLinesSync().where((l) => l.trim().isNotEmpty).toList();
+      final strHeader = strLines.first.split(',');
+      final structures = <BuildingCardEntity>[];
+
+      for (final line in strLines.sublist(1)) {
+        final cols = line.split(',');
+        final row = <String, String>{};
+        for (int i = 0; i < strHeader.length; i++) {
+          row[strHeader[i]] = cols[i];
+        }
+        final bldg = BuildingCardEntity.fromCsv(row);
+        structures.add(bldg);
+      }
+
+      expect(structures.length, equals(30));
+      expect(structures.map((s) => s.manaCost).reduce((a, b) => a + b), equals(73));
+
+      final splLines = spellsFile.readAsLinesSync().where((l) => l.trim().isNotEmpty).toList();
+      final splHeader = splLines.first.split(',');
+      final spells = <SpellCardEntity>[];
+
+      for (final line in splLines.sublist(1)) {
+        final cols = line.split(',');
+        final row = <String, String>{};
+        for (int i = 0; i < splHeader.length; i++) {
+          row[splHeader[i]] = cols[i];
+        }
+        final spell = SpellCardEntity.fromCsv(row);
+        spells.add(spell);
+      }
+
+      expect(spells.length, equals(49));
+      expect(spells.map((s) => s.manaCost).reduce((a, b) => a + b), equals(97));
     });
   });
 }

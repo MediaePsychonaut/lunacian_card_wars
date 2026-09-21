@@ -63,21 +63,20 @@ class TestCardEngineDatasets:
         assert len(structures) == 30, f"Expected 30 data rows, got {len(structures)}"
 
         expected_str_cols = [
-            "structure_id", "name", "landscape", "mana_cost", "base_hp",
-            "passive_effect_type", "effect_value", "scaling_formula",
+            "structure_id", "name", "axie_class_affinity", "mana_cost", "base_hp",
+            "armor_reduction", "passive_effect_type", "effect_value", "scaling_formula",
             "activation_trigger", "target_scope", "lore_description", "card_art_asset_id"
         ]
         assert list(structures[0].keys()) == expected_str_cols, "Column mismatch in structures_master"
 
-        valid_landscapes = {"corn_fields", "blue_plains", "nice_lands", "sandy_lands", "useless_swamp", "rainbow"}
-        valid_triggers = {"PASSIVE", "ON_DESTROY", "ON_SUMMON", "START_OF_TURN", "ON_FLOOP"}
+        valid_affinities = {"beast", "aquatic", "plant", "bird", "bug", "reptile", "neutral"}
         for row in structures:
             for col in expected_str_cols:
                 assert row[col] is not None and row[col] != "", f"Empty value at {row['structure_id']}.{col}"
-            assert row["landscape"] in valid_landscapes, f"Invalid landscape: {row['landscape']}"
-            assert row["activation_trigger"] in valid_triggers, f"Invalid trigger: {row['activation_trigger']}"
+            assert row["axie_class_affinity"] in valid_affinities, f"Invalid affinity: {row['axie_class_affinity']}"
             int(row["mana_cost"])
             int(row["base_hp"])
+            int(row["armor_reduction"])
             int(row["effect_value"])
 
         # 3. spells_master.csv
@@ -86,22 +85,18 @@ class TestCardEngineDatasets:
         assert len(spells) == 49, f"Expected 49 data rows, got {len(spells)}"
 
         expected_spl_cols = [
-            "spell_id", "name", "landscape_affinity", "mana_cost", "spell_type",
-            "effect_type", "base_value", "scaling_rule", "target_scope",
-            "turn_duration", "lore_description", "card_art_asset_id"
+            "spell_id", "name", "axie_class_affinity", "mana_cost", "spell_type",
+            "effect_type", "base_value", "scaling_formula", "target_scope",
+            "cast_window", "rarity", "description", "card_art_asset_id"
         ]
         assert list(spells[0].keys()) == expected_spl_cols, "Column mismatch in spells_master"
 
-        valid_affinities = {"corn_fields", "blue_plains", "nice_lands", "sandy_lands", "useless_swamp", "universal"}
-        valid_spell_types = {"TARGETED", "GLOBAL", "INSTANT"}
         for row in spells:
             for col in expected_spl_cols:
                 assert row[col] is not None and row[col] != "", f"Empty value at {row['spell_id']}.{col}"
-            assert row["landscape_affinity"] in valid_affinities, f"Invalid affinity: {row['landscape_affinity']}"
-            assert row["spell_type"] in valid_spell_types, f"Invalid spell type: {row['spell_type']}"
+            assert row["axie_class_affinity"] in valid_affinities, f"Invalid affinity: {row['axie_class_affinity']}"
             int(row["mana_cost"])
             int(row["base_value"])
-            int(row["turn_duration"])
 
     def test_02_mathematical_balance_and_stat_conservation(self):
         """Test 2: Mathematical Balance & Stat Conservation Law.
